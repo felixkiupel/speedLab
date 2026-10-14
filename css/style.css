@@ -9,6 +9,7 @@
   --danger: #c0392b;
   --star-off: #e4dccb;
   --radius: 16px;
+  --control-h: 40px; /* gemeinsame Höhe für Pills, Icon-Buttons und kleine Buttons in Kopfzeilen */
 }
 
 * { box-sizing: border-box; }
@@ -16,16 +17,28 @@
 html, body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
+  /* Kein Gummiband-Scrollen der ganzen Seite - das lässt bei iOS die Safari-Leiste ein-/ausfahren */
+  overscroll-behavior: none;
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Formular-Elemente erben die Schrift sonst nicht (Buttons liefen in Arial) */
+button { font: inherit; color: inherit; }
+
+h1, h2 { line-height: 1.15; }
+
 #app {
   position: relative;
   width: 100%;
   height: 100vh;
+  /* Tatsächlich sichtbare Höhe (ui.js setzt --app-height aus visualViewport) - bei iOS-Safari liegt
+     die Adress-/Tab-Leiste unten und würde sonst den unteren Rand verdecken. min() mit 100dvh,
+     damit ein kurz veralteter JS-Wert die Seite nie größer als den Bildschirm macht. */
+  height: min(100dvh, var(--app-height, 100dvh));
   overflow: hidden;
 }
 
@@ -35,15 +48,40 @@ html, body {
   display: none;
   flex-direction: column;
   align-items: center;
-  padding: 16px;
+  /* Safe-Area: Notch/abgerundete Ecken im Querformat, Home-Indikator unten */
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   overflow-y: auto;
 }
 
 .screen.active { display: flex; }
 
+/* ---------- ICONS ---------- */
+/* SVG-Icons skalieren mit der Schriftgröße und sind (anders als Text-Glyphen) exakt mittig */
+.icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+/* Folgt der Textfarbe (gedämpft in gesperrten Kacheln, hell in dunklen Buttons). Der kleine
+   Versatz nach unten richtet ihn an der Ziffernmitte aus - Segoe-Ziffern sitzen ~1px unter
+   der geometrischen Mitte der Zeile. */
+.coin-icon {
+  display: block;
+  position: relative;
+  top: 0.04em;
+  flex-shrink: 0;
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 /* ---------- MENU ---------- */
 .menu-card {
-  margin-top: 10vh;
+  margin: auto 0; /* vertikal zentriert, scrollt aber sauber, wenn der Platz nicht reicht */
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -51,12 +89,13 @@ html, body {
   gap: 18px;
 }
 
-/* Das Gesicht unserer Figur - prozentual aufgebaut, damit es in jeder Größe passt
-   (großes Menü-Mascot, kleine Overlay-Version, winzige Shop-Vorschau). */
+/* Das Gesicht unserer Figur - prozentual aufgebaut, damit es in jeder Größe passt.
+   Hintergrund/Kontur kommen aus dem ausgerüsteten Skin (ui.js -> applyPlayerLook). */
 .face {
   position: relative;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--player-bg, var(--ink));
+  box-shadow: var(--player-ring, none);
 }
 .face .eye {
   position: absolute;
@@ -65,6 +104,7 @@ html, body {
   height: 26%;
   background: var(--bg);
   border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(43, 36, 32, 0.6); /* hält das Augenweiß auf hellen Skins sichtbar */
 }
 .face .eye.left { left: 22%; }
 .face .eye.right { right: 22%; }
@@ -83,23 +123,72 @@ html, body {
 .mascot { width: 72px; height: 72px; }
 .mascot.small { width: 44px; height: 44px; }
 
-/* Jedes Mascot (Menü, Pause, Ergebnis) schaut sich gelegentlich um, damit es lebendig wirkt */
+/* Jedes Mascot (Pause, Ergebnis) schaut sich gelegentlich um, damit es lebendig wirkt.
+   Versatz in % der Pupille statt px, damit es auch beim kleinen Mascot im Auge bleibt. */
 .mascot .eye::after { animation: look-around 7s ease-in-out infinite; }
 @keyframes look-around {
   0%, 12% { transform: translate(-50%, -50%); }
-  20%, 32% { transform: translate(calc(-50% + 3px), -50%); }
-  40%, 52% { transform: translate(calc(-50% - 3px), -50%); }
+  20%, 32% { transform: translate(-15%, -50%); }
+  40%, 52% { transform: translate(-85%, -50%); }
   60%, 100% { transform: translate(-50%, -50%); }
 }
 
-.logo {
-  font-size: 2.6rem;
+/* ---------- LOGO ---------- */
+/* Die Kugel im Menü ist das Markenzeichen: immer Basis-Schwarz, egal welcher Skin
+   ausgerüstet ist (überschreibt die Skin-Variablen nur für dieses Element) */
+.brand-mascot {
+  --player-bg: var(--ink);
+  --player-ring: none;
+  width: 84px;
+  height: 84px;
+}
+
+.logo { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+/* Kontrast als Logo: "speed" klein, dünn + kursiv (Tempo), "Lab" fett und aufrecht - das große
+   L setzt den Schnitt zwischen den Wörtern. Grundlinie gemeinsam, eine Schrift (Segoe UI). */
+.logo-word {
+  display: flex;
+  align-items: baseline;
   margin: 0;
-  letter-spacing: 1px;
+  font-size: 3.1rem;
+  line-height: 1;
   color: var(--ink);
 }
-.logo span { text-decoration: underline; }
-.logo small { font-size: 1rem; color: var(--text-dim); display: block; font-weight: 400; margin-top: 4px; }
+.logo-speed {
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  /* kursive Glyphen ragen rechts über ihre Box hinaus -> etwas Luft zum "Lab" */
+  padding-right: 0.08em;
+}
+.logo-lab {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+/* "MAZE" zwischen zwei kurzen Linien */
+.logo-tag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.logo-tag::before,
+.logo-tag::after {
+  content: "";
+  width: 28px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--border-soft);
+}
+.logo-tag::after { margin-left: -0.4em; } /* Ausgleich für das trailing letter-spacing */
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot .eye::after { animation: none; }
+}
 
 .tagline { color: var(--text-dim); margin: 0; }
 
@@ -107,23 +196,32 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 260px;
+  width: 300px;
+  max-width: 100%;
+  margin-top: 4px;
 }
 
 /* ---------- BUTTONS ---------- */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
   background: var(--bg);
   color: var(--ink);
   border: 2px solid var(--border);
   border-radius: 999px;
-  padding: 13px 22px;
   font-size: 1rem;
   font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
 }
 .btn:hover { background: var(--ink); color: var(--bg); }
 .btn:active { transform: scale(0.96); }
+.btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 .btn-primary {
   background: var(--ink);
@@ -137,123 +235,534 @@ html, body {
 }
 .btn-ghost:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-.btn-disabled, .btn:disabled {
+.btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
-.btn-disabled:hover, .btn:disabled:hover { background: var(--bg); color: var(--ink); }
-.btn-disabled small { display: block; font-size: 0.7rem; color: var(--text-dim); }
+.btn:disabled:hover { background: var(--bg); color: var(--ink); }
+
+/* Zweizeiliger Button (Multiplayer): Titel + kleine Unterzeile, beides mittig */
+.btn-stack {
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+.btn-stack small { font-size: 0.72rem; font-weight: 500; color: var(--text-dim); }
+
+.btn-small { min-height: 38px; padding: 0 14px; font-size: 0.92rem; gap: 6px; }
+
+.btn-back { min-height: var(--control-h); padding: 0 16px 0 10px; gap: 4px; }
+.btn-back .icon { font-size: 1.15rem; }
 
 .btn-icon {
-  width: 38px;
-  height: 38px;
+  width: var(--control-h);
+  height: var(--control-h);
+  min-height: 0;
   padding: 0;
-  font-size: 1.1rem;
+}
+.btn-icon .icon { font-size: 1.15rem; }
+
+/* Kosten-Anhang in Buttons ("Nächstes Level · 110 ●") */
+.btn-cost {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  padding-left: 10px;
+  border-left: 1px solid currentColor;
+  opacity: 0.85;
 }
 
 /* ---------- COIN PILL ---------- */
+/* Icons mitten im Fließtext (z. B. "Ab 32 ★") */
+.inline-icon {
+  display: inline-flex;
+  vertical-align: -0.12em;
+  margin-left: 0.18em;
+}
+.inline-icon .icon { width: 0.95em; height: 0.95em; }
+.inline-icon .coin-icon { top: 0; width: 0.7em; height: 0.7em; margin-top: 0.08em; }
+
 .coin-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  height: var(--control-h);
+  padding: 0 16px;
   background: var(--bg);
   border: 2px solid var(--border);
   border-radius: 999px;
-  padding: 6px 14px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
-.coin-pill.big { font-size: 1.2rem; padding: 8px 20px; }
-.coin-pill.small { font-size: 0.85rem; padding: 4px 10px; border-width: 1px; }
-.coin-icon { color: var(--ink); }
 
 /* ---------- TOPBAR ---------- */
+/* 3-Spalten-Grid mit gleich breiten Außenspalten -> Titel steht exakt mittig,
+   egal wie breit Zurück-Button und Coin-Anzeige sind */
 .topbar {
   width: 100%;
   max-width: 900px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0 18px;
-}
-.topbar h2 { margin: 0; }
-
-/* ---------- LEVEL GRID ---------- */
-.level-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0 20px;
+}
+.topbar > :first-child { justify-self: start; }
+.topbar > :last-child { justify-self: end; }
+.topbar h2 { margin: 0; font-size: 1.4rem; }
+
+/* ---------- LEVEL-MENÜ ---------- */
+.level-map {
   width: 100%;
   max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-bottom: 24px;
+}
+
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+
+/* Übersicht oben: Gesamt-Sterne | Sterne-Regel | Weiterspielen */
+.levels-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 22px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+.summary-progress { display: flex; flex-direction: column; gap: 10px; }
+.summary-stars,
+.chapter-stars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.summary-stars { font-size: 1.7rem; }
+.summary-stars b,
+.chapter-stars b { font-weight: 700; }
+.summary-stars span,
+.chapter-stars span { color: var(--text-dim); font-size: 0.6em; font-weight: 600; }
+.summary-stars .icon { font-size: 1.5rem; }
+.summary-stars .star-icon path,
+.chapter-stars .star-icon path { stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; }
+.summary-sub { font-size: 0.85rem; color: var(--text-dim); }
+
+.summary-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border-soft);
+}
+.summary-rule-head { display: flex; align-items: center; gap: 2px; font-size: 0.95rem; }
+.summary-rule-head b { margin-left: 8px; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.summary-rule p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--text-dim); }
+.summary-rule b { color: var(--text); }
+.summary-continue { white-space: nowrap; }
+
+/* Kapitel */
+.chapter { display: flex; flex-direction: column; gap: 16px; }
+.chapter-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.chapter-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.chapter-title h3 { margin: 4px 0 2px; font-size: 1.35rem; line-height: 1.2; }
+.chapter-title p { margin: 0; font-size: 0.88rem; color: var(--text-dim); }
+.chapter-progress {
+  flex-shrink: 0;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.chapter-progress .progress { width: 100%; height: 6px; }
+.chapter-stars { font-size: 1.1rem; }
+.chapter-stars .icon { font-size: 1rem; }
+.chapter-locked .chapter-title h3 { color: var(--text-dim); }
+
+/* Kachel-Raster: 5 Spalten = 2 saubere Reihen pro Kapitel */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-rows: 1fr; /* alle Reihen gleich hoch */
+  gap: 12px;
 }
 
 .level-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 18px 12px 12px;
   background: var(--bg);
+  border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 10px;
   text-align: center;
   cursor: pointer;
-  border: 2px solid var(--border);
-  transition: transform 0.1s ease, background 0.1s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  transition: transform 0.1s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
 .level-tile:hover { transform: translateY(-2px); }
-.level-tile .lv-num { font-size: 1.6rem; font-weight: 700; }
-.level-tile .lv-stars { font-size: 0.95rem; letter-spacing: 2px; }
-.level-tile .lv-stars .star.on { color: var(--ink); }
-.level-tile .lv-stars .star.off { color: var(--star-off); }
-.level-tile .lv-best { font-size: 0.72rem; color: var(--text-dim); }
-.level-tile.locked { border-color: var(--border-soft); }
-.level-tile.locked .lv-num { color: var(--text-dim); }
-.level-tile .lv-cost { font-size: 0.78rem; color: var(--text-dim); font-weight: 700; }
+.level-tile:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Feste Zeilenhöhen: Zahl/Schloss, Sterne/Kosten und Info-Zeilen liegen in jeder Kachel
+   auf exakt derselben Höhe */
+.level-tile .lv-head,
+.level-tile .lv-mid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.level-tile .lv-head { height: 32px; }
+.level-tile .lv-mid { height: 18px; }
+
+.level-tile .lv-num { font-size: 1.75rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.level-tile .lv-head .icon { font-size: 1.6rem; }
+.level-tile .lv-stars { gap: 3px; font-size: 1rem; }
+.level-tile .lv-cost { gap: 5px; font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.lv-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border-soft);
+}
+.lv-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 16px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.lv-stat b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.lv-stat-center { justify-content: center; gap: 4px; }
+.lv-inline-coin { display: inline-flex; align-items: center; gap: 3px; }
+
+.star.on { color: var(--ink); }
+.star.off { color: var(--star-off); }
+.star-icon path { stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; }
+
+/* 3 Sterne: invertierte Kachel als "erledigt"-Belohnung */
+.level-tile.perfect { background: var(--ink); color: var(--bg); }
+.level-tile.perfect .star.on { color: var(--bg); }
+.level-tile.perfect .lv-stats { border-top-color: rgba(251, 247, 240, 0.2); }
+.level-tile.perfect .lv-stat { color: rgba(251, 247, 240, 0.65); }
+.level-tile.perfect .lv-stat b { color: var(--bg); }
+
+/* Als Nächstes dran: weicher Ring + Badge auf der Oberkante */
+.level-tile.next { box-shadow: 0 0 0 5px rgba(43, 36, 32, 0.1); }
+.lv-badge {
+  position: absolute;
+  top: -11px;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin: 0 auto;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  /* letter-spacing hängt hinten Abstand an -> links etwas mehr Padding zum Ausgleich */
+  padding: 0 9px 0 calc(9px + 0.08em);
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Gesperrt: gedämpft. Leistbar: gestrichelter dunkler Rahmen + Kosten in voller Farbe, damit
+   man sieht, dass ein Klick das Level kauft. Nicht leistbar: kein Anheben, kein Hand-Cursor. */
+.level-tile.locked { border-color: var(--border-soft); color: var(--text-dim); }
+.level-tile.locked .lv-stat b { color: var(--text-dim); }
+.level-tile.locked:not(.affordable) { cursor: not-allowed; }
+.level-tile.locked:not(.affordable):hover { transform: none; }
+.level-tile.locked.affordable { border-style: dashed; border-color: var(--ink); }
+.level-tile.locked.affordable .lv-cost,
+.level-tile.locked.affordable .lv-stat-center { color: var(--ink); font-weight: 700; }
+
+.level-tile.shake { animation: shake 0.35s ease; border-color: var(--danger); }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+@media (max-width: 760px) {
+  .levels-summary { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .summary-rule { padding: 14px 0 0; border-left: none; border-top: 1px solid var(--border-soft); }
+  .summary-continue { width: 100%; }
+  .level-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .level-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chapter-head { flex-direction: column; align-items: stretch; gap: 12px; }
+  .chapter-progress { width: 100%; flex-direction: row; align-items: center; }
+  .chapter-progress .progress { flex: 1; order: -1; }
+}
 
 /* ---------- SHOP ---------- */
-.shop-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
+.shop {
   width: 100%;
   max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 24px;
 }
-.shop-tile {
-  background: var(--bg);
+
+.kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Aktueller Look: Live-Vorschau (Skin + Spur im Mini-Korridor) + Sammelfortschritt */
+.shop-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  padding: 18px 24px 18px 18px;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 10px;
-  text-align: center;
-  border: 2px solid var(--border-soft);
+}
+.shop-hero-canvas { display: block; width: 100%; height: 120px; border-radius: 10px; }
+.shop-hero-info { display: flex; flex-direction: column; gap: 4px; }
+.shop-hero-name { font-size: 1.7rem; font-weight: 700; line-height: 1.15; }
+.shop-hero-trail { font-size: 0.92rem; color: var(--text-dim); }
+.shop-hero-count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.shop-hero-count .progress { flex: 1; height: 6px; }
+.shop-hero-stars {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+.shop-hero-stars b { color: var(--text); }
+.shop-hero-stars-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.95rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented Control: Skins | Spuren */
+.shop-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+}
+.shop-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.shop-tab span { font-size: 0.75rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.shop-tab:hover:not(.active) { background: rgba(43, 36, 32, 0.06); }
+.shop-tab.active { background: var(--ink); color: var(--bg); }
+.shop-tab.active span { color: rgba(251, 247, 240, 0.7); }
+.shop-tab:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+/* Spuren brauchen Breite, damit man den Effekt über mehrere Felder sieht */
+.shop-grid-trail { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.shop-grid-trail .shop-preview { height: 72px; }
+.shop-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 38px 14px 14px;
+  background: var(--bg);
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius);
+  text-align: center;
 }
-.shop-tile.equipped { border-color: var(--ink); }
-.shop-swatch {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
+.shop-tile.equipped { border-color: var(--ink); box-shadow: 0 0 0 5px rgba(43, 36, 32, 0.1); }
+.shop-preview { display: block; width: 100%; height: 76px; }
+.shop-name { font-weight: 600; }
+/* Statuszeile: Im Besitz / Ab X Sterne / Noch X Coins / Jetzt kaufbar */
+/* Normaler Textfluss statt Flex: Flexbox würde die Leerzeichen rund um das Stern-Icon schlucken */
+.shop-status {
+  display: block;
+  height: 16px;
+  line-height: 16px;
+  margin-top: -5px;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  white-space: nowrap;
 }
-.shop-tile button { width: 100%; }
+.shop-status.is-locked { color: var(--text); font-weight: 700; }
+.shop-status.is-ready { color: var(--text); font-weight: 600; }
+/* Noch nicht genug Sterne: Vorschau ausgegraut, damit sofort klar ist, dass es gesperrt ist */
+.shop-tile.star-locked .shop-preview { opacity: 0.35; filter: grayscale(1); }
+.shop-tile.star-locked .shop-name { color: var(--text-dim); }
+.shop-tile .btn { width: 100%; }
+/* Ausgerüstet ist ein positiver Zustand, kein ausgegrauter "geht nicht"-Button */
+.shop-tile .btn.is-equipped:disabled { opacity: 1; cursor: default; }
+.shop-tile .btn.is-equipped:disabled:hover { background: var(--ink); color: var(--bg); }
+
+/* Seltenheit: je seltener, desto kräftiger. Mittig oben in der Kachel. */
+.rarity {
+  position: absolute;
+  top: 11px;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin: 0 auto;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px 0 calc(9px + 0.07em); /* gleicht das trailing letter-spacing aus */
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.rarity-common { color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--border-soft); }
+.rarity-rare { color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.rarity-epic { background: var(--ink); color: var(--bg); }
+.rarity-legendary { background: linear-gradient(90deg, #ffd166, #ff8a5c, #ff6fa5, #b084ff); color: var(--ink); }
+
+@media (max-width: 640px) {
+  .shop-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
+  .shop-tabs { align-self: stretch; }
+  .shop-tab { flex: 1; justify-content: center; }
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-grid-trail { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* ---------- GAME ---------- */
-#screen-game { padding: 10px; }
+#screen-game { padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); }
 
 .hud {
   width: 100%;
   max-width: 900px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* Timer exakt mittig, unabhängig von links/rechts */
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+.hud-left { justify-self: start; }
+.hud-center { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+/* Welche Wertung ist gerade noch drin, und bis wann */
+.hud-stars {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 4px 12px;
+  gap: 2px;
+  height: 14px;
+  font-size: 0.8rem;
   font-weight: 600;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
-.hud-right { display: flex; align-items: center; gap: 10px; }
-#hud-timer { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.hud-stars span:last-child { margin-left: 6px; }
+.hud-stars.dropped { animation: star-drop 0.4s ease; }
+@keyframes star-drop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.18); color: var(--danger); }
+  100% { transform: scale(1); }
+}
+.hud-right { justify-self: end; display: flex; align-items: center; gap: 10px; }
+
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-h);
+  padding: 0 16px;
+  border: 2px solid var(--border-soft);
+  border-radius: 999px;
+  font-weight: 700;
+  line-height: 1;
+}
+.coin-pill.hud-pill { border-color: var(--border); }
+
+#hud-timer {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
 
 .canvas-wrap {
   position: relative;
@@ -262,86 +771,558 @@ html, body {
   justify-content: center;
   flex: 1;
   width: 100%;
+  min-height: 0;
+}
+
+.canvas-frame {
+  position: relative;
+  display: flex;
 }
 
 #game-canvas {
+  display: block;
+  box-sizing: content-box; /* style.width = Pixelpuffer / devicePixelRatio, der Rahmen kommt außen dazu */
   background: var(--bg);
   border: 2px solid var(--border);
-  border-radius: 4px;
-  max-width: 100%;
-  max-height: 100%;
+  border-radius: 10px;
 }
 
+/* left/right 0 + margin auto statt left 50% + translate: sonst steht dem Element nur die
+   halbe Breite zur Verfügung und der Text bricht schon auf dem Handy in 3 Zeilen um */
 .start-hint {
   position: absolute;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0 auto;
+  padding: 9px 16px;
   background: var(--ink);
-  padding: 8px 16px;
+  color: var(--bg);
   border-radius: 999px;
   font-size: 0.85rem;
-  color: var(--bg);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
   pointer-events: none;
   transition: opacity 0.2s ease;
 }
 .start-hint.hidden { opacity: 0; }
 
-.crash-flash {
-  position: absolute;
-  inset: 0;
-  background: var(--danger);
-  opacity: 0;
-  border-radius: 4px;
-  pointer-events: none;
-}
-.crash-flash.show {
-  opacity: 0.3;
-  transition: opacity 0.4s ease;
-}
-
 /* ---------- OVERLAYS ---------- */
+/* Blickdicht + Blur: in der Pause steht die Uhr, das Maze soll man dann nicht studieren können */
 .overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow-y: auto;
+  padding: 16px;
 }
+/* margin:auto zentriert wie align/justify center, schneidet aber bei Überhöhe oben nichts ab */
+.overlay > .overlay-card { margin: auto; }
 .overlay.hidden { display: none; }
 
 .overlay-card {
   background: var(--bg);
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 28px 32px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  min-width: 260px;
+  width: 300px;
+  max-width: 100%;
 }
-.overlay-card h2 { margin: 0 0 6px; }
+.overlay-card h2 { margin: 2px 0 6px; font-size: 1.4rem; }
 .overlay-card .btn { width: 100%; }
 
 /* ---------- RESULTS ---------- */
-#screen-results { justify-content: center; }
-.results-card { width: 300px; }
-.result-stars { font-size: 2.2rem; letter-spacing: 6px; margin: 4px 0; }
-.result-stars .star.on { color: var(--ink); }
-.result-stars .star.off { color: var(--star-off); }
+.results-card { margin: auto 0; width: min(340px, 100%); }
+.result-stars { display: flex; justify-content: center; gap: 8px; font-size: 2.2rem; margin: 0 0 4px; }
+
+.result-rows {
+  width: 100%;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 6px 0;
+}
 .result-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   width: 100%;
+  padding: 5px 2px;
   color: var(--text-dim);
   font-size: 0.95rem;
 }
-.result-row span:last-child { color: var(--text); font-weight: 700; }
-.results-buttons { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 10px; }
+.result-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.results-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin: -4px 0 2px;
+  padding: 0 10px 0 calc(10px + 0.08em);
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.results-badge.hidden { display: none; }
+.results-note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.results-note b { color: var(--text); }
+.results-unlock {
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(43, 36, 32, 0.07);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: center;
+}
+.results-unlock.hidden { display: none; }
+/* Haupt-Button (Nächstes Level / Teilen) über die volle Breite, Neustart + Zurück nebeneinander */
+.results-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 8px; }
+.results-buttons .btn-primary { grid-column: 1 / -1; }
+.results-buttons .btn:not(.btn-primary) { padding: 0 10px; font-size: 0.95rem; }
 
 @media (max-width: 480px) {
-  .logo { font-size: 2rem; }
-  .menu-buttons { width: 220px; }
+  .logo-word { font-size: 2.5rem; }
+  .brand-mascot { width: 72px; height: 72px; }
+
+  .topbar h2 { font-size: 1.2rem; }
+  .btn-back { padding: 0 12px 0 8px; }
+  .hud-pill { padding: 0 12px; }
+  #hud-timer { font-size: 1.25rem; }
+  .start-hint { white-space: normal; text-wrap: balance; border-radius: 14px; }
+}
+
+/* ---------- TIPP-STEUERUNG (Handy) ---------- */
+/* Standardmäßig aus; ui.js setzt #app.tap-controls je nach Einstellung / Gerät. Die Fläche
+   nimmt die untere Hälfte (komplett tippbar), darin sitzt die quadratische Knopf-Raute. */
+.tap-pad { display: none; }
+#app.tap-controls .tap-pad {
+  --pad-size: min(40dvh, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 100%;
+  height: var(--pad-size);
+  margin: 12px 0 10px;
+  cursor: pointer;
+  /* Kein Scrollen/Zoomen per Geste, keine Textauswahl, kein grauer Tipp-Blitz */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tap-diamond {
+  position: relative;
+  width: min(100%, var(--pad-size));
+  aspect-ratio: 1;
+  pointer-events: none; /* Treffer berechnet ui.js über die ganze Fläche */
+}
+/* Knopf-Durchmesser 34 % der Raute, Mittelpunkte 31 % von der Mitte entfernt -> kleine Lücken
+   wie bei den Symboltasten eines Controllers */
+.tap-btn {
+  position: absolute;
+  width: 34%;
+  height: 34%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 6px 0 rgba(43, 36, 32, 0.28);
+  transition: background 0.12s ease-out, box-shadow 0.12s ease-out, transform 0.12s ease-out;
+}
+.tap-btn[data-zone="N"] { left: 50%; top: 19%; }
+.tap-btn[data-zone="S"] { left: 50%; top: 81%; }
+.tap-btn[data-zone="W"] { left: 19%; top: 50%; }
+.tap-btn[data-zone="E"] { left: 81%; top: 50%; }
+/* Gedrückt: etwas heller und eingesunken (Schatten weg, ein Stück nach unten) */
+.tap-btn.pressed {
+  background: #4a3f39;
+  box-shadow: 0 1px 0 rgba(43, 36, 32, 0.28);
+  transform: translate(-50%, calc(-50% + 4px));
+  transition: none;
+}
+/* Ring, der bei jedem Antippen um den Knopf aufspringt und ausblendet */
+.tap-btn::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  opacity: 0;
+  pointer-events: none;
+}
+.tap-btn.ring::after { animation: tap-ring 0.34s ease-out; }
+@keyframes tap-ring {
+  0% { opacity: 0.85; transform: scale(0.92); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tap-btn.ring::after { animation: tap-ring-static 0.3s linear; }
+  @keyframes tap-ring-static { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+}
+#screen-game { touch-action: manipulation; }
+
+/* ---------- DAILY-KARTE (Menü) ---------- */
+/* Dunkle Karte direkt unter den Menü-Buttons (gleiche Breite). Oben: Kalender | Titel |
+   Play/Ergebnis. Unten, abgetrennt wie ein Ticket-Abriss: die Serie. Alles schwarz-weiß. */
+.daily-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  max-width: 100%;
+  margin-top: 18px;
+  padding: 12px 14px 10px 12px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: 20px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 0 rgba(43, 36, 32, 0.18);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.daily-card:hover { transform: translateY(-2px); box-shadow: 0 8px 0 rgba(43, 36, 32, 0.18); }
+.daily-card:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(43, 36, 32, 0.18); }
+.daily-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+.daily-main { display: flex; align-items: center; gap: 12px; }
+
+/* Schlichtes Kalenderblatt: Monat klein, Tag groß */
+.daily-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.daily-month {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-indent: 0.1em; /* gleicht das trailing letter-spacing aus */
+  line-height: 1;
+  color: var(--text-dim);
+}
+.daily-day {
+  margin-top: 2px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.daily-kicker {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(251, 247, 240, 0.6);
+  white-space: nowrap;
+}
+.daily-title { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; white-space: nowrap; }
+/* Schwierigkeit als 1-3 Balken */
+.daily-pips { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.daily-pips i { display: block; width: 4px; border-radius: 2px; background: rgba(251, 247, 240, 0.25); }
+.daily-pips i:nth-child(1) { height: 6px; }
+.daily-pips i:nth-child(2) { height: 9px; }
+.daily-pips i:nth-child(3) { height: 12px; }
+.daily-pips i.on { background: var(--bg); }
+
+/* Rechts: Play-Knopf (noch offen) oder Sterne + Bestzeit (heute schon gespielt) */
+.daily-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.daily-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink);
+}
+.daily-play .icon { font-size: 1rem; margin-left: 2px; } /* Dreieck optisch mittig */
+.daily-stars { display: flex; gap: 1px; font-size: 0.85rem; }
+.daily-card .star.on { color: var(--bg); }
+.daily-card .star.off { color: rgba(251, 247, 240, 0.25); }
+
+/* Serie: eigene Zeile, gestrichelt abgetrennt. Helle Flamme mit der Zahl als Ebene davor. */
+.daily-streak {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1.5px dashed rgba(251, 247, 240, 0.25);
+}
+.daily-flame {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 38px;
+  height: 48px;
+}
+.daily-flame svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--bg);
+  transform-origin: 50% 100%;
+  animation: flame-flicker 2.6s ease-in-out infinite;
+}
+/* Zahl sitzt im runden unteren Teil der Flamme (dort ist sie am breitesten, oberhalb liegt links
+   die Einkerbung der kleinen Zunge) */
+.daily-flame-count {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 72%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.daily-flame-count.two { font-size: 0.92rem; letter-spacing: -0.05em; } /* 2 Ziffern */
+.daily-flame-count.small { font-size: 0.72rem; letter-spacing: -0.05em; } /* ab 3 Ziffern */
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1, 1); }
+  30% { transform: scale(0.97, 1.04); }
+  60% { transform: scale(1.02, 0.98); }
+}
+.daily-streak-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.daily-streak-label { font-size: 1rem; font-weight: 800; white-space: nowrap; }
+.daily-streak-best { font-size: 0.7rem; color: rgba(251, 247, 240, 0.6); white-space: nowrap; }
+.daily-time { flex-shrink: 0; align-self: flex-end; font-size: 0.72rem; color: rgba(251, 247, 240, 0.6); white-space: nowrap; }
+/* Noch keine Serie: Flamme nur als Umriss, ohne Zahl, kein Flackern */
+.daily-streak.empty .daily-flame svg {
+  fill: none;
+  stroke: rgba(251, 247, 240, 0.5);
+  stroke-width: 1.6;
+  animation: none;
+}
+.daily-streak.empty .daily-streak-label { font-weight: 600; color: rgba(251, 247, 240, 0.85); }
+@media (prefers-reduced-motion: reduce) {
+  .daily-flame svg { animation: none; }
+}
+
+/* ---------- EINSTELLUNGEN ---------- */
+.settings-overlay { z-index: 50; }
+.settings-card { width: 360px; gap: 14px; text-align: left; }
+.settings-list { width: 100%; display: flex; flex-direction: column; }
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row-stack { flex-direction: column; align-items: stretch; gap: 10px; }
+.setting-row.disabled .setting-text { opacity: 0.45; }
+.setting-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.setting-text span { font-size: 0.78rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* Schalter */
+.toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 50px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.toggle span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.toggle[aria-checked="true"] { background: var(--ink); }
+.toggle[aria-checked="true"] span { transform: translateX(20px); background: var(--bg); }
+.toggle:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* Lautstärke-Regler */
+.slider {
+  flex: 0 1 150px;
+  min-width: 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+.slider:disabled { cursor: not-allowed; opacity: 0.4; }
+
+/* Auto | An | Aus */
+.segmented {
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+}
+.segmented button {
+  flex: 1;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.segmented button.active { background: var(--ink); color: var(--bg); }
+.segmented button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.btn-danger { min-height: 40px; font-size: 0.9rem; }
+.btn-danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* ---------- TOAST ---------- */
+.toast {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0 auto;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+.toast.hidden { display: none; }
+.toast.show { animation: toast-in 0.25s ease; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- ANIMATIONEN ---------- */
+/* Screens blenden kurz ein statt hart umzuschalten */
+.screen.active { animation: screen-in 0.18s ease-out; }
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.overlay:not(.hidden) .overlay-card { animation: card-in 0.2s cubic-bezier(0.2, 1.2, 0.4, 1); }
+@keyframes card-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Ergebnis-Sterne ploppen mit Überschwinger rein, Badge und Coin-Pill ebenso */
+.result-stars .star { display: block; }
+.result-stars .star.pop { animation: star-pop 0.4s cubic-bezier(0.2, 1.8, 0.4, 1); }
+@keyframes star-pop {
+  0% { transform: scale(0.3) rotate(-25deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.results-badge.pop,
+.coin-pill.pop { animation: pop 0.3s cubic-bezier(0.2, 1.8, 0.4, 1); }
+@keyframes pop {
+  0% { transform: scale(0.7); }
+  100% { transform: scale(1); }
+}
+.results-buttons .btn.hidden { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.active,
+  .overlay:not(.hidden) .overlay-card,
+  .result-stars .star.pop,
+  .results-badge.pop,
+  .coin-pill.pop,
+  .toast.show { animation: none; }
+}
+
+@media (max-width: 480px) {
+  .settings-card { padding: 22px 20px; }
+}
+
+/* ---------- NIEDRIGE BILDSCHIRME ---------- */
+/* Menü auf kleinen Handys (z.B. iPhone SE mit Safari-Leisten ~550px): enger, damit Buttons und
+   Daily-Karte ohne Scrollen passen */
+@media (max-height: 640px) {
+  .menu-card { gap: 12px; }
+  .brand-mascot { width: 56px; height: 56px; }
+  .logo { gap: 8px; }
+  .logo-word { font-size: 2.4rem; }
+  .menu-buttons { gap: 10px; }
+  .menu-buttons .btn { min-height: 44px; }
+  .daily-card { margin-top: 8px; }
+}
+
+/* Kleine Handys mit Browser-Leisten haben oft nur ~550px sichtbare Höhe - Ergebnis, Pause und
+   Einstellungen werden dann kompakter, damit alles ohne Scrollen auf den Bildschirm passt. */
+@media (max-height: 720px) {
+  .overlay-card { padding: 18px 20px; gap: 9px; }
+  .results-card .mascot { display: none; }
+  .overlay-card h2 { font-size: 1.25rem; margin: 0 0 2px; }
+  .result-stars { font-size: 1.8rem; margin: 0; }
+  .result-rows { padding: 4px 0; }
+  .result-row { padding: 3px 2px; font-size: 0.9rem; }
+  .results-note { font-size: 0.76rem; line-height: 1.4; }
+  .results-unlock { padding: 7px 10px; font-size: 0.78rem; }
+  .overlay-card .btn { min-height: 44px; }
+  .results-buttons { margin-top: 2px; gap: 8px; }
+  .setting-row { padding: 9px 0; }
 }

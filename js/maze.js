@@ -139,6 +139,46 @@ function placeCoins(grid, rows, cols, rand, start, end, count) {
   return candidates.slice(0, Math.min(count, candidates.length));
 }
 
+// Kürzester Weg als Zellliste (Start ... Ziel) - für Checkpoints entlang der Ideallinie
+SL.findShortestPath = function findShortestPath(maze) {
+  const { grid, rows, cols, start, end } = maze;
+  const prev = Array.from({ length: rows }, () => new Array(cols).fill(null));
+  const seen = Array.from({ length: rows }, () => new Array(cols).fill(false));
+  const q = [[start.r, start.c]];
+  seen[start.r][start.c] = true;
+  for (let head = 0; head < q.length; head++) {
+    const [r, c] = q[head];
+    if (r === end.r && c === end.c) break;
+    for (const key of Object.keys(DIRS)) {
+      const d = DIRS[key];
+      const nr = r + d.dr, nc = c + d.dc;
+      if (inBounds(rows, cols, nr, nc) && grid[nr][nc] === SL.PATH && !seen[nr][nc]) {
+        seen[nr][nc] = true;
+        prev[nr][nc] = [r, c];
+        q.push([nr, nc]);
+      }
+    }
+  }
+  const path = [];
+  for (let cell = [end.r, end.c]; cell; cell = prev[cell[0]][cell[1]]) path.push({ r: cell[0], c: cell[1] });
+  return path.reverse();
+};
+
+// Checkpoints gleichmäßig auf dem kürzesten Weg verteilt (bei 2 also nach 1/3 und 2/3).
+// Nie auf ein Coin-Feld, sonst überlagern sich Flagge und Coin.
+SL.computeCheckpoints = function computeCheckpoints(maze, count) {
+  if (!count) return [];
+  const path = SL.findShortestPath(maze);
+  const coinKeys = new Set(maze.coins.map((co) => co.r + "," + co.c));
+  const result = [];
+  for (let k = 1; k <= count; k++) {
+    let i = Math.round(((path.length - 1) * k) / (count + 1));
+    while (i < path.length - 2 && coinKeys.has(path[i].r + "," + path[i].c)) i++;
+    result.push({ r: path[i].r, c: path[i].c });
+  }
+  return result;
+};
+
 /**
  * Erzeugt ein komplettes Maze-Paket für ein Level: ein Block-Grid (grid[r][c] = SL.WALL | SL.PATH).
  * @param {{rows:number, cols:number, seed:number, loopFactor:number, coinCount:number}} opts

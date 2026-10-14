@@ -1,0 +1,9 @@
+{
+  "name": "speedlab-maze",
+  "private": true,
+  "description": "speedLab Maze - Labyrinth-Speedrun im Browser",
+  "scripts": {
+    "dev": "npx --yes http-server . -p 5173 -c-1",
+    "seeds": "node tools/level-seeds.js"
+  }
+}
