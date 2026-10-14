@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpeedLab Maze</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- MAIN MENU -->
+  <section id="screen-menu" class="screen active">
+    <div class="menu-card">
+      <h1 class="logo">Speed<span>Lab</span> <small>Maze</small></h1>
+      <p class="tagline">Finde den Weg. Werde schneller.</p>
+      <div class="coin-pill big"><span class="coin-icon">●</span><span id="menu-coins">0</span></div>
+      <div class="menu-buttons">
+        <button id="btn-play" class="btn btn-primary">Spielen</button>
+        <button id="btn-shop" class="btn">Shop</button>
+        <button id="btn-multiplayer" class="btn btn-disabled" disabled>Multiplayer <small>(bald verfügbar)</small></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section id="screen-levels" class="screen">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="screen-menu">&larr; Menü</button>
+      <h2>Level</h2>
+      <div class="coin-pill"><span class="coin-icon">●</span><span id="levels-coins">0</span></div>
+    </header>
+    <div id="level-grid" class="level-grid"></div>
+  </section>
+
+  <!-- SHOP -->
+  <section id="screen-shop" class="screen">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="screen-menu">&larr; Menü</button>
+      <h2>Shop</h2>
+      <div class="coin-pill"><span class="coin-icon">●</span><span id="shop-coins">0</span></div>
+    </header>
+    <div id="shop-grid" class="shop-grid"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-left">
+        <span id="hud-level">Level 1</span>
+      </div>
+      <div class="hud-center">
+        <span id="hud-timer">0.00s</span>
+      </div>
+      <div class="hud-right">
+        <span class="coin-pill small"><span class="coin-icon">●</span><span id="hud-coins">0</span></span>
+        <button id="btn-pause" class="btn btn-icon">⏸</button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="game-canvas"></canvas>
+      <div id="start-hint" class="start-hint">Drück eine Pfeiltaste / WASD um zu starten</div>
+      <div id="crash-flash" class="crash-flash"></div>
+    </div>
+    <div class="speed-meter">
+      <span>Tempo</span>
+      <div id="speed-bar" class="speed-bar"></div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <h2>Pause</h2>
+        <button id="btn-resume" class="btn btn-primary">Weiter</button>
+        <button id="btn-restart" class="btn">Neustart</button>
+        <button id="btn-quit" class="btn btn-ghost" data-nav="screen-levels">Verlassen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="overlay-card results-card">
+      <h2 id="results-title">Level geschafft!</h2>
+      <div class="result-stars" id="results-stars">
+        <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+      </div>
+      <div class="result-row"><span>Zeit</span><span id="results-time">0.00s</span></div>
+      <div class="result-row"><span>Crashes</span><span id="results-crashes">0</span></div>
+      <div class="result-row"><span>Coins verdient</span><span id="results-coins">+0 ●</span></div>
+      <div class="results-buttons">
+        <button id="btn-retry" class="btn">Neustart</button>
+        <button id="btn-next-level" class="btn btn-primary">Nächstes Level</button>
+        <button id="btn-back-levels" class="btn btn-ghost" data-nav="screen-levels">Level-Auswahl</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/rng.js"></script>
+<script src="js/maze.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
