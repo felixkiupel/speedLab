@@ -2,7 +2,7 @@
 window.SL = window.SL || {};
 
 SL.COSMETICS = [
-  { id: "default", name: "Schwarz", color: "#111111", price: 0 },
+  { id: "default", name: "Kohle", color: "#2b2420", price: 0 },
   { id: "ember", name: "Ember", color: "#ff8a5c", price: 50 },
   { id: "violet", name: "Violet", color: "#b084ff", price: 80 },
   { id: "lime", name: "Lime", color: "#c6f24a", price: 120 },
@@ -55,9 +55,13 @@ SL.Economy = {
     return true;
   },
 
-  // Berechnet Sterne-Schwellen relativ zur BFS-Optimalzeit eines Mazes
-  computeThresholds(optimalSteps, tickMs) {
-    const optimalTimeMs = optimalSteps * tickMs;
+  // Berechnet Sterne-Schwellen relativ zur BFS-Optimalzeit eines Mazes. Die Bewegung ist
+  // jetzt rein manuell (ein Tastendruck = ein Feld), daher gibt es kein level-eigenes Tempo
+  // mehr - BASELINE_STEP_MS ist eine grobe Annahme, wie schnell ein geübter Spieler pro
+  // Feld vorankommt, wenn er zügig durchdrückt.
+  computeThresholds(optimalSteps) {
+    const BASELINE_STEP_MS = 180;
+    const optimalTimeMs = optimalSteps * BASELINE_STEP_MS;
     const t3 = optimalTimeMs * 1.15 + 800;
     const t2 = optimalTimeMs * 1.5 + 1200;
     return { optimalTimeMs, t3, t2 };

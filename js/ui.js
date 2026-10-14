@@ -2,11 +2,14 @@
 window.SL = window.SL || {};
 
 SL.UI = (function () {
+  // Zellen sind jetzt immer gleich groß, egal wie groß das Level-Grid ist - die Kamera
+  // zeigt nur einen Ausschnitt um den Spieler, statt das ganze Maze reinzuquetschen.
+  const CELL_SIZE = 40;
+
   let state; // Save-State (aus Storage)
   let currentLevelId = null;
   let session = null;
   let mazeLayer = null;
-  let cellSize = 28;
   let playerColor = "#111111";
   let rafId = null;
   let lastFrameTime = 0;
@@ -106,7 +109,9 @@ SL.UI = (function () {
       const label = equipped ? "Ausgerüstet" : owned ? "Ausrüsten" : `${cos.price} ●`;
       const disabled = equipped || (!owned && state.coins < cos.price);
       return `<div class="shop-tile ${equipped ? "equipped" : ""}">
-        <div class="shop-swatch" style="background:${cos.color}"></div>
+        <div class="shop-swatch face" style="background:${cos.color}">
+          <span class="eye left"></span><span class="eye right"></span>
+        </div>
         <div>${cos.name}</div>
         <button class="btn" data-cosmetic="${cos.id}" data-owned="${owned}" ${disabled ? "disabled" : ""}>${label}</button>
       </div>`;
@@ -123,13 +128,14 @@ SL.UI = (function () {
     refreshCoinDisplays();
   }
 
-  function sizeCanvas(rows, cols) {
+  // Fester quadratischer Ausschnitt (Viewport) - unabhängig von der Maze-Größe,
+  // zeigt immer nur die Umgebung um den Spieler statt des ganzen Levels.
+  function sizeCanvas() {
     const availW = canvasWrap.clientWidth - 8;
     const availH = canvasWrap.clientHeight - 8;
-    cellSize = Math.floor(Math.min(availW / cols, availH / rows));
-    cellSize = Math.max(12, Math.min(48, cellSize));
-    canvas.width = cols * cellSize;
-    canvas.height = rows * cellSize;
+    const viewport = Math.max(240, Math.min(560, availW, availH));
+    canvas.width = viewport;
+    canvas.height = viewport;
   }
 
   function openGame(levelId) {
@@ -138,10 +144,8 @@ SL.UI = (function () {
     showScreen("screen-game");
 
     session = new SL.GameSession(levelConfig);
-    // Canvas-Größe richtet sich nach dem fertigen Grid (Räume + Türen als eigene Zellen),
-    // nicht nach der rohen Level-Config - das Grid ist größer als levelConfig.rows/cols.
-    sizeCanvas(session.maze.rows, session.maze.cols);
-    mazeLayer = SL.Renderer.buildMazeLayer(session.maze, cellSize);
+    sizeCanvas();
+    mazeLayer = SL.Renderer.buildMazeLayer(session.maze, CELL_SIZE);
 
     session.onFirstMove = () => startHint.classList.add("hidden");
     session.onCoinCollected = () => { hudCoins.textContent = session.coinsCollected; };
@@ -154,19 +158,10 @@ SL.UI = (function () {
     pauseOverlay.classList.add("hidden");
     paused = false;
     playerColor = SL.getCosmetic(state.equippedCosmetic).color; // ändert sich nicht mehr während des Laufs
-    renderSpeedMeter(levelConfig.tickMs);
 
     stopGameLoop();
     lastFrameTime = performance.now();
     rafId = requestAnimationFrame(gameLoop);
-  }
-
-  function renderSpeedMeter(tickMs) {
-    const level = SL.speedLevelFor(tickMs);
-    const bar = document.getElementById("speed-bar");
-    bar.innerHTML = Array.from({ length: SL.SPEED_SEGMENTS })
-      .map((_, i) => `<span class="speed-seg ${i < level ? "on" : ""}"></span>`)
-      .join("");
   }
 
   function gameLoop(now) {
@@ -182,10 +177,10 @@ SL.UI = (function () {
     if (session) {
       SL.Renderer.render(ctx, canvas, {
         mazeLayer,
-        cellSize,
+        cellSize: CELL_SIZE,
         coins: session.maze.coins,
         collectedSet: session.collectedSet,
-        player: session.getPlayerPixel(cellSize),
+        player: session.getPlayerPixel(CELL_SIZE),
         trail: session.trail,
         color: playerColor,
         direction: session.currentDir,
@@ -272,6 +267,9 @@ SL.UI = (function () {
     }
     if (!dir || !gameActive || paused || !session) return;
     e.preventDefault();
+    // OS-Auto-Repeat (gehaltene Taste) ignorieren - jeder Schritt soll ein bewusster,
+    // einzelner Tastendruck sein. Schnell sein geht per Spammen, nicht per Halten.
+    if (e.repeat) return;
     session.requestDirection(dir);
   }
 

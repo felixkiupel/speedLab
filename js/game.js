@@ -1,5 +1,7 @@
-// Kern-Simulation: Tick-basierte Bewegung. Erzwungene Kurven (nur 1 Weg nach vorne) werden
-// automatisch genommen, Tasteneingabe entscheidet nur an echten Kreuzungen. Crash = Reset zum Start.
+// Kern-Simulation: Bewegung ist komplett manuell, kein Tick, keine Automatik. Jeder
+// Tastendruck (WASD/Pfeiltasten) ist genau EIN Versuch, ein Feld weiterzugehen - sofort,
+// synchron. Wand im Weg -> Reset zum Start. Das Tempo macht nur noch der Spieler selbst:
+// schnell drücken = schnell, Zeit lassen = langsamer.
 window.SL = window.SL || {};
 
 const CRASH_FLASH_MS = 400;
@@ -14,15 +16,12 @@ SL.GameSession = function GameSession(levelConfig) {
     loopFactor: levelConfig.loopFactor,
     coinCount: levelConfig.coinCount,
   });
-  this.tickMs = levelConfig.tickMs;
-  this.thresholds = SL.Economy.computeThresholds(this.maze.optimalSteps, this.tickMs);
+  this.thresholds = SL.Economy.computeThresholds(this.maze.optimalSteps);
 
   this.cur = { ...this.maze.start };
-  this.currentDir = null;
-  this.pendingDir = null;
+  this.currentDir = null; // letzte erfolgreiche Richtung - nur für die Kehrtwende-Sperre und das Gesicht
   this.started = false;
   this.finished = false;
-  this.accumulator = 0;
   this.simElapsedMs = 0;
   this.crashCount = 0;
   this.coinsCollected = 0;
@@ -37,87 +36,39 @@ SL.GameSession = function GameSession(levelConfig) {
   this.onFinish = null;
 };
 
+SL.GameSession.prototype._isWall = function _isWall(r, c) {
+  const { grid, rows, cols } = this.maze;
+  return !(r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === SL.PATH);
+};
+
+// Ein Aufruf = ein Versuch, sofort ein Feld in "dirKey" weiterzugehen. Kein Tick, keine
+// Verzögerung - wie schnell es vorangeht, entscheidet allein die Drückfrequenz des Spielers.
 SL.GameSession.prototype.requestDirection = function requestDirection(dirKey) {
   if (this.finished) return;
-  this.pendingDir = dirKey;
-  // Sofortige Reaktion statt auf den nächsten Tick zu warten: beim allerersten Zug
-  // und direkt nach einem Reset (currentDir ist dann null), damit sich die Steuerung
-  // nicht verzögert anfühlt. Während der Punkt bereits läuft, entscheidet ohnehin
-  // der nächste Tick bzw. die nächste echte Kreuzung.
-  if (!this.currentDir) {
-    this._resolveTick();
-    this.accumulator = 0;
-  }
-};
+  // Kehrtwende wird ignoriert, solange der Punkt schon eine Richtung hat - sonst könnte
+  // man sich per Links-Rechts-Spam auf der Stelle halten. Direkt nach einem Reset
+  // (currentDir ist dann null) ist jede Richtung wieder frei wählbar.
+  if (this.currentDir && dirKey === SL.DIRS[this.currentDir].opposite) return;
 
-SL.GameSession.prototype.update = function update(dtMs) {
-  if (this.finished || !this.started) return;
-  if (this.crashFlashMs > 0) this.crashFlashMs = Math.max(0, this.crashFlashMs - dtMs);
-  this.accumulator += dtMs;
-  let safety = 0;
-  while (this.accumulator >= this.tickMs && !this.finished && safety < 50) {
-    this.accumulator -= this.tickMs;
-    this._resolveTick();
-    safety++;
-  }
-};
+  const d = SL.DIRS[dirKey];
+  const nr = this.cur.r + d.dr, nc = this.cur.c + d.dc;
 
-SL.GameSession.prototype._openDirsAt = function _openDirsAt(r, c) {
-  const { grid, rows, cols } = this.maze;
-  return Object.keys(SL.DIRS).filter((k) => {
-    const d = SL.DIRS[k];
-    const nr = r + d.dr, nc = c + d.dc;
-    return nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] === SL.PATH;
-  });
-};
-
-SL.GameSession.prototype._resolveTick = function _resolveTick() {
-  const openDirs = this._openDirsAt(this.cur.r, this.cur.c);
-  let candidate = null;
-
-  if (!this.currentDir) {
-    // Steht noch (ganz am Anfang oder direkt nach einem Reset): nur eine gültige,
-    // explizite Eingabe setzt den Punkt in Bewegung. Sonst einfach warten, kein Crash.
-    if (this.pendingDir && openDirs.includes(this.pendingDir)) candidate = this.pendingDir;
-    if (!candidate) return;
-  } else {
-    // "Vorwärts" = alles außer der exakten Kehrtwende (verhindert Links-Rechts-Spam
-    // und das versehentliche Zurücklaufen in eine schon besuchte Richtung).
-    const backDir = SL.DIRS[this.currentDir].opposite;
-    const forwardOptions = openDirs.filter((d) => d !== backDir);
-
-    if (forwardOptions.length === 0) {
-      // Sackgasse: der einzige Weg ist zurück -> Crash.
-      this._crashAndReset();
-      return;
-    } else if (forwardOptions.length === 1) {
-      // Erzwungene Kurve bzw. gerader Gang ohne echte Abzweigung: automatisch weiterlaufen,
-      // dafür muss man nicht exakt die richtige Taste im richtigen Tick treffen.
-      candidate = forwardOptions[0];
-    } else if (this.pendingDir && forwardOptions.includes(this.pendingDir)) {
-      candidate = this.pendingDir;
-    } else if (forwardOptions.includes(this.currentDir)) {
-      // Echte Kreuzung ohne (passende) Eingabe: geradeaus weiter, falls möglich.
-      candidate = this.currentDir;
-    } else {
-      // Echte Kreuzung, geradeaus nicht möglich und keine passende Eingabe -> Crash.
-      this._crashAndReset();
-      return;
-    }
+  if (this._isWall(nr, nc)) {
+    // Steht der Punkt gerade still (vor dem ersten Zug oder direkt nach einem Reset,
+    // currentDir dann null), zählt ein falscher Versuch nicht als Fehler - man probiert
+    // nur eine Richtung aus. Ist er aber schon unterwegs: Wand in Fahrtrichtung = Reset.
+    if (this.currentDir) this._crashAndReset();
+    return;
   }
 
-  this.currentDir = candidate;
+  this.currentDir = dirKey;
   if (!this.started) {
     this.started = true;
     if (this.onFirstMove) this.onFirstMove();
   }
 
-  const d = SL.DIRS[candidate];
-  this.cur = { r: this.cur.r + d.dr, c: this.cur.c + d.dc };
-  this.simElapsedMs += this.tickMs;
+  this.cur = { r: nr, c: nc };
 
-  // Trail wird pro Tick (nicht pro Frame) fortgeschrieben, damit sich der Punkt sichtbar
-  // von Feld zu Feld "teleportiert" statt weich zu gleiten.
   this.trail.push({ ...this.cur });
   if (this.trail.length > TRAIL_LENGTH) this.trail.shift();
 
@@ -134,6 +85,13 @@ SL.GameSession.prototype._resolveTick = function _resolveTick() {
   }
 };
 
+// Keine Bewegung mehr hier (die passiert sofort in requestDirection) - nur noch die
+// Echtzeit-Stoppuhr weiterlaufen lassen und den Crash-Flash ausblenden.
+SL.GameSession.prototype.update = function update(dtMs) {
+  if (this.crashFlashMs > 0) this.crashFlashMs = Math.max(0, this.crashFlashMs - dtMs);
+  if (this.started && !this.finished) this.simElapsedMs += dtMs;
+};
+
 // Wand-Crash: zählt als Fehler und schickt den Punkt zurück zum Start (bereits eingesammelte Coins bleiben erhalten)
 SL.GameSession.prototype._crashAndReset = function _crashAndReset() {
   this.crashCount++;
@@ -141,7 +99,6 @@ SL.GameSession.prototype._crashAndReset = function _crashAndReset() {
 
   this.cur = { ...this.maze.start };
   this.currentDir = null;
-  this.pendingDir = null;
   this.trail = [];
 
   if (this.onCrash) this.onCrash();
@@ -158,7 +115,7 @@ SL.GameSession.prototype.buildResult = function buildResult() {
 };
 
 // Liefert die Pixelposition des Spielers - bewusst ohne Interpolation, der Punkt
-// "teleportiert" pro Tick direkt ins nächste Feld statt weich zu gleiten.
+// "teleportiert" pro Schritt direkt ins nächste Feld statt weich zu gleiten.
 SL.GameSession.prototype.getPlayerPixel = function getPlayerPixel(cellSize) {
   return {
     x: this.cur.c * cellSize + cellSize / 2,
