@@ -1,0 +1,462 @@
+/* Startseite: Logo, Daily-Serie (spielübergreifend) und die Spiele als Kacheln.
+   Farben, Buttons, Logo und Figur kommen aus shared/css/base.css. Anders als in den Spielen
+   scrollt hier ganz normal die Seite. */
+
+:root {
+  --grid-line: #e8e0d2; /* wie die Gitterlinien im Maze */
+  --outside: #ebe3d5;
+  --lift: rgba(43, 36, 32, 0.14);
+}
+
+/* Spielfeld-Raster hinter dem Logo, das nach unten und zu den Seiten ausblendet */
+.hub-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 620px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center -1px;
+  -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 18%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 60% 70% at 50% 18%, #000 20%, transparent 75%);
+}
+
+.hub {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+/* Coins oben rechts, über dem Logo-Bereich (nimmt keine eigene Zeile weg) */
+.hub-top {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 1;
+}
+
+/* ---------- HERO ---------- */
+.hub-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-top: 28px;
+  text-align: center;
+}
+.hub-hero .logo { margin-top: 6px; }
+.hub-hero .logo-word { font-size: clamp(2.8rem, 10vw, 4.2rem); }
+.hub-hero .tagline { font-size: 1.08rem; }
+
+/* Bühne für die Figur: weicher Schatten am Boden, der beim Hüpfen kleiner wird */
+.hub-mascot-stage { position: relative; }
+.hub-mascot-stage::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  width: 64%;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(43, 36, 32, 0.13);
+  transform: translateX(-50%);
+}
+.hub-mascot-stage.hop::after { animation: shadow-hop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes shadow-hop {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(0.6); opacity: 0.6; }
+}
+
+/* Die Figur ist ein Button (Klick = Hüpfer). Pupillen: entweder look-around (base.css) oder,
+   sobald sich die Maus bewegt, in Richtung Zeiger (--look-x/--look-y aus hub.js). */
+.hub-mascot {
+  display: block;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.hub-mascot:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+.hub-mascot.tracking .eye::after {
+  animation: none;
+  transform: translate(calc(-50% + var(--look-x, 0px)), calc(-50% + var(--look-y, 0px)));
+  transition: transform 0.08s linear;
+}
+.hub-mascot .eye { animation: blink 6s infinite; }
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  94% { transform: scaleY(0.12); }
+}
+.hub-mascot-stage.hop .hub-mascot { animation: hop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  20% { transform: translateY(0) scale(1.12, 0.86); }
+  50% { transform: translateY(-22px) scale(0.94, 1.08); }
+  80% { transform: translateY(0) scale(1.06, 0.94); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+/* ---------- DAILY-SERIE ---------- */
+/* Dunkle Karte wie das Daily im Maze-Menü: oben Flamme | Text | letzte 7 Tage,
+   darunter gestrichelt abgetrennt der heutige Stand. */
+.streak-card {
+  align-self: center;
+  width: 100%;
+  max-width: 660px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 14px 18px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 22px;
+  box-shadow: 0 6px 0 rgba(43, 36, 32, 0.18);
+}
+.streak-head { display: flex; align-items: center; gap: 14px; }
+
+.streak-flame {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 42px;
+  height: 52px;
+}
+.streak-flame svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--bg);
+  transform-origin: 50% 100%;
+  animation: flame-flicker 2.6s ease-in-out infinite;
+}
+/* Zahl im runden unteren Teil der Flamme */
+.streak-count {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 72%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.streak-count.two { font-size: 1rem; letter-spacing: -0.05em; }
+.streak-count.small { font-size: 0.78rem; letter-spacing: -0.05em; }
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1, 1); }
+  30% { transform: scale(0.97, 1.04); }
+  60% { transform: scale(1.02, 0.98); }
+}
+/* Noch keine Serie: Flamme nur als Umriss, kein Flackern */
+.streak-card.empty .streak-flame svg {
+  fill: none;
+  stroke: rgba(251, 247, 240, 0.5);
+  stroke-width: 1.6;
+  animation: none;
+}
+
+.streak-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.streak-kicker {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(251, 247, 240, 0.6);
+}
+.streak-label { font-size: 1.2rem; font-weight: 800; white-space: nowrap; }
+.streak-card.empty .streak-label { font-weight: 700; }
+.streak-best { font-size: 0.74rem; color: rgba(251, 247, 240, 0.6); }
+
+/* Letzte 7 Tage: Kreis gefüllt = an dem Tag ein Daily geschafft. Alle Spalten gleich breit,
+   heute ist nur am hellen Buchstaben-Pill und am gestrichelten Kreis zu erkennen. */
+.streak-week { display: flex; gap: 6px; flex-shrink: 0; }
+.streak-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 28px;
+}
+.streak-day-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 16px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(251, 247, 240, 0.5);
+}
+.streak-day.today .streak-day-name { background: var(--bg); color: var(--ink); }
+.streak-day i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(251, 247, 240, 0.22);
+  font-size: 0.9rem;
+}
+.streak-day.done i { background: var(--bg); color: var(--ink); box-shadow: none; }
+.streak-day.today:not(.done) i { box-shadow: none; border: 1.5px dashed rgba(251, 247, 240, 0.75); }
+.streak-day.today.done i { box-shadow: 0 0 0 3px rgba(251, 247, 240, 0.22); }
+
+.streak-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1.5px dashed rgba(251, 247, 240, 0.25);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: rgba(251, 247, 240, 0.75);
+}
+.streak-foot b { color: var(--bg); }
+.streak-foot-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.75rem;
+}
+
+/* ---------- SPIELE ---------- */
+.hub-section { display: flex; flex-direction: column; gap: 18px; }
+.hub-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.hub-section-head h2 { margin: 0; font-size: 1.4rem; }
+
+/* Große Kacheln: auf dem Desktop zwei nebeneinander, auf dem Handy eine pro Zeile */
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 22px;
+}
+
+/* Kachel: großes Vorschaubild (innen abgerundet), darunter Name, Spruch und Tags. Die ganze
+   Kachel ist der Link - Anheben + Bild-Zoom beim Hovern zeigen, dass man draufklicken kann. */
+.game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 12px 18px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 2px solid var(--border);
+  border-radius: 24px;
+  text-decoration: none;
+  box-shadow: 0 6px 0 var(--lift);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+a.game-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+a.game-card:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--lift); transition-duration: 0.06s; }
+
+.game-preview {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  isolation: isolate; /* hält den Bild-Zoom sauber in den runden Ecken (Safari) */
+  border-radius: 14px;
+  background: var(--outside);
+}
+/* Feine Innenkante: helle Felder am Bildrand verschwimmen sonst mit der gleichfarbigen Kachel */
+.game-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px rgba(43, 36, 32, 0.14);
+  pointer-events: none;
+}
+.game-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Hover nur mit Maus: auf dem Handy bliebe die Kachel nach dem Tippen sonst "angehoben" hängen */
+@media (hover: hover) {
+  a.game-card:hover { transform: translateY(-5px); box-shadow: 0 11px 0 var(--lift); }
+  a.game-card:hover .game-preview img { transform: scale(1.06); }
+  a.game-card:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--lift); }
+}
+
+/* Daily-Status oben links auf dem Bild */
+.game-daily {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px 0 calc(11px + 0.06em);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.game-daily::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bg);
+  animation: daily-pulse 1.6s ease-in-out infinite;
+}
+.game-daily.done { background: var(--bg); color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+.game-daily.done::before { display: none; }
+.game-daily .icon { font-size: 0.85rem; }
+@keyframes daily-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.game-body { display: flex; flex-direction: column; gap: 4px; padding: 0 8px; }
+.game-name { font-size: 1.6rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; }
+.game-tagline { font-size: 0.95rem; color: var(--text-dim); }
+.game-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.game-tags:empty { display: none; }
+.game-tags span {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Platzhalter "Bald mehr": gestrichelt, gedämpft, nicht klickbar */
+.game-card.soon {
+  border: 2px dashed var(--border-soft);
+  box-shadow: none;
+  color: var(--text-dim);
+}
+.game-card.soon .game-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(-45deg, transparent 0 12px, rgba(221, 211, 194, 0.35) 12px 24px);
+}
+.game-card.soon .game-preview::after { display: none; }
+.game-card.soon .game-name { color: var(--text-dim); }
+.soon-mascot {
+  --player-bg: var(--border-soft);
+  --player-ring: none;
+  width: 72px;
+  height: 72px;
+}
+
+/* ---------- FUSSZEILE (Credits) ---------- */
+.hub-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 20px 0 4px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.foot-brand { display: flex; align-items: center; gap: 12px; }
+/* Kleine Ausgabe der Figur im Basis-Schwarz, schaut sich wie die großen um */
+.foot-mascot {
+  --player-bg: var(--ink);
+  --player-ring: none;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+}
+.foot-credits { display: flex; flex-direction: column; gap: 3px; }
+.foot-logo { display: flex; align-items: baseline; font-size: 1.05rem; line-height: 1; color: var(--ink); }
+.foot-credits b { color: var(--text); font-weight: 700; }
+
+.foot-links { display: flex; gap: 8px; }
+.foot-links a {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.foot-links a:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.foot-links a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- KLEINE BILDSCHIRME ---------- */
+@media (max-width: 600px) {
+  .hub { gap: 30px; }
+  .hub-hero { padding-top: 52px; } /* Platz für die Coins oben rechts */
+  .hub-mascot { width: 84px; height: 84px; }
+  .streak-head { flex-wrap: wrap; }
+  .streak-week {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 2px;
+  }
+  .game-grid { gap: 18px; }
+  .game-name { font-size: 1.45rem; }
+  /* Platzhalter untereinander nicht so groß wie ein echtes Spiel */
+  .game-card.soon .game-preview { aspect-ratio: auto; height: 96px; }
+  .game-card.soon .soon-mascot { width: 52px; height: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-mascot .eye,
+  .hub-mascot-stage.hop .hub-mascot,
+  .hub-mascot-stage.hop::after,
+  .streak-flame svg,
+  .game-daily::before { animation: none; }
+  .game-card,
+  .game-preview img { transition: none; }
+}

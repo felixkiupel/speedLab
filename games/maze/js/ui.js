@@ -68,9 +68,10 @@ SL.UI = (function () {
     if (id === "screen-menu") refreshMenu();
   }
 
+  // Coins sind spielübergreifend (Profil) - die Anzeigen zeigen also immer den Gesamtstand
   function refreshCoinDisplays() {
-    document.getElementById("levels-coins").textContent = state.coins;
-    document.getElementById("shop-coins").textContent = state.coins;
+    const coins = SL.Profile.coins();
+    for (const id of ["menu-coins", "levels-coins", "shop-coins"]) document.getElementById(id).textContent = coins;
     hudCoins.textContent = session ? session.coinsCollected : 0;
   }
 
@@ -120,14 +121,14 @@ SL.UI = (function () {
 
   // Alle Kacheln haben denselben Aufbau (Kopf / Mitte / zwei Info-Zeilen), damit Inhalte
   // in jeder Kachel auf derselben Höhe sitzen - egal ob gesperrt, gespielt oder neu.
-  function levelTileHtml(level, nextLevelId) {
+  function levelTileHtml(level, nextLevelId, coins) {
     const target = `&lt; ${formatTime(getThresholds(level.id).t3)}`;
 
     if (!SL.Economy.isLevelUnlocked(state, level.id)) {
-      const affordable = SL.Economy.canAffordUnlock(state, level.id);
+      const affordable = coins >= level.unlockCost;
       const status = affordable
         ? `<div class="lv-stat lv-stat-center">Freischalten</div>`
-        : `<div class="lv-stat lv-stat-center">Noch <b class="lv-inline-coin">${level.unlockCost - state.coins}${COIN_ICON}</b></div>`;
+        : `<div class="lv-stat lv-stat-center">Noch <b class="lv-inline-coin">${level.unlockCost - coins}${COIN_ICON}</b></div>`;
       return `<button type="button" class="level-tile locked ${affordable ? "affordable" : ""}" data-level="${level.id}" aria-label="Level ${level.id} freischalten für ${level.unlockCost} Coins">
         <div class="lv-head">${LOCK_ICON}</div>
         <div class="lv-mid lv-cost">${level.unlockCost}${COIN_ICON}</div>
@@ -159,6 +160,7 @@ SL.UI = (function () {
     const completed = SL.LEVELS.filter((l) => getResult(l.id)).length;
     const pct = (part, whole) => `${Math.round((part / whole) * 100)}%`;
     const msPerTile = (SL.STAR_MS_PER_TILE[3] / 1000).toFixed(1).replace(".", ",");
+    const coins = SL.Profile.coins();
 
     const summary = `<div class="levels-summary">
       <div class="summary-progress">
@@ -189,7 +191,7 @@ SL.UI = (function () {
             <div class="progress"><span style="width:${pct(chStars, levels.length * 3)}"></span></div>
           </div>
         </header>
-        <div class="level-grid">${levels.map((l) => levelTileHtml(l, next?.id)).join("")}</div>
+        <div class="level-grid">${levels.map((l) => levelTileHtml(l, next?.id, coins)).join("")}</div>
       </section>`;
     }).join("");
 
@@ -202,7 +204,7 @@ SL.UI = (function () {
       openGame(levelId);
       return;
     }
-    if (SL.Economy.canAffordUnlock(state, levelId)) {
+    if (SL.Economy.canAffordUnlock(levelId)) {
       SL.Economy.unlockLevel(state, levelId);
       SL.Audio.play("unlock");
       openGame(levelId);
@@ -223,7 +225,7 @@ SL.UI = (function () {
 
   // Statuszeile unter dem Namen (jede Kachel hat eine, damit alle gleich aufgebaut sind):
   // Im Besitz / fehlende Sterne / fehlende Coins / kaufbar
-  function shopTileHtml(cos) {
+  function shopTileHtml(cos, coins) {
     const owned = state.ownedCosmetics.includes(cos.id);
     const equipped = SL.getEquipped(state, cos.type).id === cos.id;
     const starLocked = !owned && !SL.Economy.hasStarsFor(state, cos);
@@ -238,11 +240,11 @@ SL.UI = (function () {
       disabled = true;
     } else if (!owned) {
       label = starLocked ? `${LOCK_ICON}${cos.price}${COIN_ICON}` : `${cos.price}${COIN_ICON}`;
-      disabled = starLocked || state.coins < cos.price;
+      disabled = starLocked || coins < cos.price;
       if (starLocked) {
         status = `<span class="shop-status is-locked">Ab ${cos.stars}${INLINE_STAR} · noch ${missingStars}</span>`;
-      } else if (state.coins < cos.price) {
-        status = `<span class="shop-status">Noch ${cos.price - state.coins}${INLINE_COIN} sammeln</span>`;
+      } else if (coins < cos.price) {
+        status = `<span class="shop-status">Noch ${cos.price - coins}${INLINE_COIN} sammeln</span>`;
       } else {
         status = `<span class="shop-status is-ready">Jetzt kaufbar</span>`;
       }
@@ -263,6 +265,7 @@ SL.UI = (function () {
     const ofType = (type) => SL.COSMETICS.filter((c) => c.type === type);
     const ownedOf = (type) => ofType(type).filter((c) => state.ownedCosmetics.includes(c.id)).length;
     const ownedTotal = SL.COSMETICS.filter((c) => state.ownedCosmetics.includes(c.id)).length;
+    const coins = SL.Profile.coins();
 
     root.innerHTML = `
       <div class="shop-hero">
@@ -286,7 +289,7 @@ SL.UI = (function () {
           ${SHOP_TAB_NAMES[type]}<span>${ownedOf(type)}/${ofType(type).length}</span>
         </button>`).join("")}
       </div>
-      <div class="shop-grid shop-grid-${shopTab}">${ofType(shopTab).map(shopTileHtml).join("")}</div>`;
+      <div class="shop-grid shop-grid-${shopTab}">${ofType(shopTab).map((cos) => shopTileHtml(cos, coins)).join("")}</div>`;
 
     drawShopPreviews(performance.now(), false);
     // Animierte Items (Prisma, Funken, Regenbogen) brauchen eine Schleife - nur dann starten
@@ -568,7 +571,7 @@ SL.UI = (function () {
     };
   }
 
-  // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus inkl. Serie)
+  // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus, der mit der Serie wächst)
   function recordDailyRun(result) {
     const daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.timeMs, result.stars);
     return { coinsEarned: daily.coins, isNewBest: daily.isNewBest, unlocked: [], daily };
@@ -600,7 +603,7 @@ SL.UI = (function () {
       const { streak, firstClear } = outcome.daily;
       info = `${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
         + (firstClear ? ` · Tagesbonus +${outcome.coinsEarned}${INLINE_COIN}` : "")
-        + `<br>Nächstes Daily in ${SL.Daily.timeUntilNext()}`;
+        + `<br>Nächstes Daily in ${SL.Days.timeUntilNext()}`;
     } else if (outcome.unlocked.length) {
       info = `${INLINE_STAR} Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`;
     }
@@ -670,7 +673,7 @@ SL.UI = (function () {
   async function shareDaily() {
     const record = SL.Daily.getRecord(state, currentConfig.dailyKey);
     if (!record) return;
-    const text = SL.Daily.shareText(currentConfig, record, SL.Daily.currentStreak(state, currentConfig.dailyKey), formatTime);
+    const text = SL.Daily.shareText(currentConfig, record, SL.Profile.streak(currentConfig.dailyKey), formatTime);
     try {
       if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
         await navigator.share({ text });
@@ -705,12 +708,12 @@ SL.UI = (function () {
   const DIFFICULTY_LEVEL = { Leicht: 1, Mittel: 2, Schwer: 3 };
   const PLAY_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>`;
 
-  // Menü: Daily-Karte (Datum, Nummer, Schwierigkeit, Serie, heutiges Ergebnis)
+  // Menü: Daily-Karte (Datum, Nummer, Schwierigkeit, heutiges Ergebnis). Die Serie steht nur auf
+  // der Startseite, weil sie für alle Spiele gilt.
   function refreshMenu() {
     refreshCoinDisplays();
     const config = SL.Daily.getConfig();
     const record = SL.Daily.getRecord(state, config.dailyKey);
-    const streak = SL.Daily.currentStreak(state, config.dailyKey);
     const [, month, day] = config.dailyKey.split("-").map(Number);
     const level = DIFFICULTY_LEVEL[config.difficulty] || 1;
 
@@ -718,27 +721,11 @@ SL.UI = (function () {
     document.getElementById("daily-day").textContent = day;
     document.getElementById("daily-title").innerHTML =
       `#${config.number} · ${config.difficulty}<span class="daily-pips">${[1, 2, 3].map((i) => `<i class="${i <= level ? "on" : ""}"></i>`).join("")}</span>`;
-    const best = state.daily.bestStreak || 0;
-    document.getElementById("daily-streak").classList.toggle("empty", !streak);
-    const countEl = document.getElementById("daily-streak-count");
-    countEl.textContent = streak || "";
-    countEl.classList.toggle("two", streak >= 10 && streak < 100);
-    countEl.classList.toggle("small", streak >= 100);
-    document.getElementById("daily-streak-label").textContent = streak
-      ? (streak === 1 ? "Tag Serie" : "Tage Serie")
-      : "Starte eine Serie";
-    document.getElementById("daily-streak-best").textContent = best
-      ? `Rekord: ${best} ${best === 1 ? "Tag" : "Tage"}`
-      : "Jeden Tag ein neues Labyrinth";
-    document.getElementById("daily-time").textContent = record
-      ? `Neues in ${SL.Daily.timeUntilNext(new Date(), true)}`
-      : `Noch ${SL.Daily.timeUntilNext(new Date(), true)}`;
     document.getElementById("daily-status").innerHTML = record
       ? `<span class="daily-stars">${starsHtml(record.stars)}</span><span>${formatTime(record.bestTimeMs)}</span>`
       : `<span class="daily-play">${PLAY_ICON}</span>`;
     document.getElementById("btn-daily").setAttribute("aria-label",
-      `Tägliches Labyrinth ${config.number}, ${config.difficulty}` + (record ? `, Bestzeit ${formatTime(record.bestTimeMs)}` : ", noch nicht gespielt")
-      + (streak ? `, ${streak} ${streak === 1 ? "Tag" : "Tage"} Serie` : ""));
+      `Tägliches Labyrinth ${config.number}, ${config.difficulty}` + (record ? `, Bestzeit ${formatTime(record.bestTimeMs)}` : ", noch nicht gespielt"));
   }
 
   function togglePause() {
@@ -770,7 +757,7 @@ SL.UI = (function () {
     if (!nextLevel) { showScreen("screen-levels"); return; }
     if (SL.Economy.isLevelUnlocked(state, nextLevel.id)) {
       openGame(nextLevel.id);
-    } else if (SL.Economy.canAffordUnlock(state, nextLevel.id)) {
+    } else if (SL.Economy.canAffordUnlock(nextLevel.id)) {
       SL.Economy.unlockLevel(state, nextLevel.id);
       SL.Audio.play("unlock");
       openGame(nextLevel.id);
@@ -913,10 +900,21 @@ SL.UI = (function () {
       if (isGameActive()) sizeCanvas();
       if (document.getElementById("screen-shop").classList.contains("active")) drawShopPreviews(performance.now(), false);
     });
-    // Tab im Hintergrund -> automatisch pausieren, die Uhr misst ja echte Zeit
+    // Tab im Hintergrund -> automatisch pausieren, die Uhr misst ja echte Zeit. Zurück im Tab:
+    // Menü neu einlesen, falls inzwischen Mitternacht war (neues Daily).
+    const menuActive = () => document.getElementById("screen-menu").classList.contains("active");
     document.addEventListener("visibilitychange", () => {
       if (document.hidden && isGameActive() && !paused) togglePause();
+      if (!document.hidden && menuActive()) refreshMenu();
     });
+    // Zurück-Button von der Startseite: Seite kommt evtl. aus dem Cache -> Coins/Menü neu einlesen
+    window.addEventListener("pageshow", (e) => {
+      if (!e.persisted) return;
+      if (menuActive()) refreshMenu();
+      else refreshCoinDisplays();
+    });
+    // Coins können sich auch in einem anderen Tab ändern (Startseite, anderes Spiel)
+    SL.Profile.onChange(refreshCoinDisplays);
 
     SL.Settings.init(state, (settings) => {
       effects.enabled = settings.effects;

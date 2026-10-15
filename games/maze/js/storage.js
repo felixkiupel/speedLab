@@ -1,17 +1,17 @@
-// Save/Load Wrapper um localStorage
+// Save/Load Wrapper um localStorage - nur der Maze-eigene Fortschritt. Coins und die Daily-Serie
+// liegen spielübergreifend im Profil (shared/js/profile.js).
 window.SL = window.SL || {};
 
-const SAVE_KEY = "speedlab_save_v1";
+const SAVE_KEY = "speedlab_maze_v1";
 
 function defaultSave() {
   return {
-    coins: 0,
     unlockedLevels: [1],
     levelResults: {}, // { [levelId]: { bestTimeMs, stars, timesPlayed } }
     levelSet: SL.LEVEL_SET_VERSION, // zu welcher Level-Generation die levelResults gehören
     ownedCosmetics: ["default", "trail-dots"],
     equipped: { skin: "default", trail: "trail-dots" },
-    daily: { streak: 0, bestStreak: 0, lastCompleted: null, results: {} }, // { [YYYY-MM-DD]: { bestTimeMs, stars, attempts } }
+    daily: { results: {} }, // { [YYYY-MM-DD]: { bestTimeMs, stars, attempts } }
     settings: defaultSettings(),
   };
 }
@@ -32,7 +32,7 @@ SL.Storage = {
       // Merge mit Default, falls Felder in alten Saves fehlen
       const state = Object.assign(defaultSave(), parsed);
       // Andere Level-Generation: Bestzeiten/Sterne gehören zu anderen Labyrinthen und werden
-      // verworfen. Coins, freigeschaltete Level und Skins bleiben erhalten.
+      // verworfen. Freigeschaltete Level und Skins bleiben erhalten (Coins liegen im Profil).
       if (parsed.levelSet !== SL.LEVEL_SET_VERSION) {
         state.levelResults = {};
         state.levelSet = SL.LEVEL_SET_VERSION;
@@ -65,8 +65,12 @@ SL.Storage = {
     }
   },
 
+  // Löscht nur den Maze-Fortschritt - Coins und Serie im Profil bleiben
   reset() {
-    localStorage.removeItem(SAVE_KEY);
-    return defaultSave();
+    try {
+      localStorage.removeItem(SAVE_KEY);
+    } catch (e) {
+      console.warn("Speicherstand konnte nicht gelöscht werden.", e);
+    }
   },
 };

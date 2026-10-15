@@ -1,0 +1,272 @@
+/* Gemeinsame Basis für die Startseite und alle Spiele: Farben, Schrift, Icons, Buttons,
+   Coin-Anzeige, das Gesicht der Figur und das speedLab-Logo. Alles Spiel-spezifische liegt im
+   Ordner des jeweiligen Spiels (games/<id>/css). */
+:root {
+  --bg: #fbf7f0;
+  --ink: #2b2420;
+  --text: #2b2420;
+  --text-dim: #85786a;
+  --border: #2b2420;
+  --border-soft: #ddd3c2;
+  --danger: #c0392b;
+  --star-off: #e4dccb;
+  --radius: 16px;
+  --control-h: 40px; /* gemeinsame Höhe für Pills, Icon-Buttons und kleine Buttons in Kopfzeilen */
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Formular-Elemente erben die Schrift sonst nicht (Buttons liefen in Arial) */
+button { font: inherit; color: inherit; }
+
+h1, h2 { line-height: 1.15; }
+
+/* ---------- ICONS ---------- */
+/* SVG-Icons skalieren mit der Schriftgröße und sind (anders als Text-Glyphen) exakt mittig */
+.icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+/* Folgt der Textfarbe (gedämpft in gesperrten Kacheln, hell in dunklen Buttons). Der kleine
+   Versatz nach unten richtet ihn an der Ziffernmitte aus - Segoe-Ziffern sitzen ~1px unter
+   der geometrischen Mitte der Zeile. */
+.coin-icon {
+  display: block;
+  position: relative;
+  top: 0.04em;
+  flex-shrink: 0;
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- FIGUR ---------- */
+/* Das Gesicht unserer Figur - prozentual aufgebaut, damit es in jeder Größe passt.
+   Hintergrund/Kontur kommen aus dem ausgerüsteten Skin (Maze: ui.js -> applyPlayerLook). */
+.face {
+  position: relative;
+  border-radius: 50%;
+  background: var(--player-bg, var(--ink));
+  box-shadow: var(--player-ring, none);
+}
+.face .eye {
+  position: absolute;
+  top: 30%;
+  width: 26%;
+  height: 26%;
+  background: var(--bg);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(43, 36, 32, 0.6); /* hält das Augenweiß auf hellen Skins sichtbar */
+}
+.face .eye.left { left: 22%; }
+.face .eye.right { right: 22%; }
+.face .eye::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 46%;
+  height: 46%;
+  background: var(--ink);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.mascot { width: 72px; height: 72px; }
+.mascot.small { width: 44px; height: 44px; }
+
+/* Jedes Mascot (Pause, Ergebnis) schaut sich gelegentlich um, damit es lebendig wirkt.
+   Versatz in % der Pupille statt px, damit es auch beim kleinen Mascot im Auge bleibt. */
+.mascot .eye::after { animation: look-around 7s ease-in-out infinite; }
+@keyframes look-around {
+  0%, 12% { transform: translate(-50%, -50%); }
+  20%, 32% { transform: translate(-15%, -50%); }
+  40%, 52% { transform: translate(-85%, -50%); }
+  60%, 100% { transform: translate(-50%, -50%); }
+}
+
+/* ---------- LOGO ---------- */
+/* Die Kugel neben dem Logo ist das Markenzeichen: immer Basis-Schwarz, egal welcher Skin
+   ausgerüstet ist (überschreibt die Skin-Variablen nur für dieses Element) */
+.brand-mascot {
+  --player-bg: var(--ink);
+  --player-ring: none;
+  width: 84px;
+  height: 84px;
+}
+
+.logo { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+/* Kontrast als Logo: "speed" klein, dünn + kursiv (Tempo), "Lab" fett und aufrecht - das große
+   L setzt den Schnitt zwischen den Wörtern. Grundlinie gemeinsam, eine Schrift (Segoe UI). */
+.logo-word {
+  display: flex;
+  align-items: baseline;
+  margin: 0;
+  font-size: 3.1rem;
+  line-height: 1;
+  color: var(--ink);
+}
+.logo-speed {
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  /* kursive Glyphen ragen rechts über ihre Box hinaus -> etwas Luft zum "Lab" */
+  padding-right: 0.08em;
+}
+.logo-lab {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+/* Untertitel ("MAZE", "GAMES") zwischen zwei kurzen Linien */
+.logo-tag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.logo-tag::before,
+.logo-tag::after {
+  content: "";
+  width: 28px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--border-soft);
+}
+.logo-tag::after { margin-left: -0.4em; } /* Ausgleich für das trailing letter-spacing */
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot .eye::after { animation: none; }
+}
+
+.tagline { color: var(--text-dim); margin: 0; }
+
+.kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ---------- BUTTONS ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none; /* auch als Link (<a class="btn">) */
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+.btn:hover { background: var(--ink); color: var(--bg); }
+.btn:active { transform: scale(0.96); }
+.btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--bg);
+}
+.btn-primary:hover { background: var(--bg); color: var(--ink); }
+
+.btn-ghost {
+  border-color: var(--border-soft);
+  color: var(--text-dim);
+}
+.btn-ghost:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn:disabled:hover { background: var(--bg); color: var(--ink); }
+
+.btn-small { min-height: 38px; padding: 0 14px; font-size: 0.92rem; gap: 6px; }
+
+.btn-back { min-height: var(--control-h); padding: 0 16px 0 10px; gap: 4px; }
+.btn-back .icon { font-size: 1.15rem; }
+
+.btn-icon {
+  width: var(--control-h);
+  height: var(--control-h);
+  min-height: 0;
+  padding: 0;
+}
+.btn-icon .icon { font-size: 1.15rem; }
+
+/* Kosten-Anhang in Buttons ("Nächstes Level · 110 ●") */
+.btn-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 10px;
+  border-left: 1px solid currentColor;
+  opacity: 0.85;
+}
+
+.btn-danger { min-height: 40px; font-size: 0.9rem; }
+.btn-danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* ---------- COIN PILL ---------- */
+/* Icons mitten im Fließtext (z. B. "Ab 32 ★") */
+.inline-icon {
+  display: inline-flex;
+  vertical-align: -0.12em;
+  margin-left: 0.18em;
+}
+.inline-icon .icon { width: 0.95em; height: 0.95em; }
+.inline-icon .coin-icon { top: 0; width: 0.7em; height: 0.7em; margin-top: 0.08em; }
+
+.coin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: var(--control-h);
+  padding: 0 16px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* ---------- FORTSCHRITT ---------- */
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}

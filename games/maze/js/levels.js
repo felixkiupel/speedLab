@@ -27,7 +27,7 @@ SL.levelCurve = function levelCurve(id) {
 
 // Pro Level der Seed, dessen kürzester Weg am nächsten an targetSteps liegt (max. ~7 % daneben).
 // Fest eingetragen statt zur Laufzeit gesucht, weil die Suche über alle Level ~1 s dauert.
-// Neu erzeugen nach Änderungen an Kurve oder Generator: node tools/level-seeds.js
+// Neu erzeugen nach Änderungen an Kurve oder Generator: npm run seeds (games/maze/tools/level-seeds.js)
 // LEVEL_SEEDS[id - 1] gehört zu Level id.
 const LEVEL_SEEDS = [
   217377, 15838, 128486, 136405, 667969, 152243,

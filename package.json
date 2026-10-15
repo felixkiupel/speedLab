@@ -1,9 +1,10 @@
 {
-  "name": "speedlab-maze",
+  "name": "speedlab",
   "private": true,
-  "description": "speedLab Maze - Labyrinth-Speedrun im Browser",
+  "description": "speedLab - kleine Browser-Spiele mit gemeinsamen Coins und Daily-Serie",
   "scripts": {
     "dev": "npx --yes http-server . -p 5173 -c-1",
-    "seeds": "node tools/level-seeds.js"
+    "seeds": "node games/maze/tools/level-seeds.js",
+    "maze-preview": "node games/maze/tools/maze-preview.js"
   }
 }

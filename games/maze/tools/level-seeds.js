@@ -1,10 +1,10 @@
 // Sucht für jedes Level den Seed, dessen kürzester Weg am nächsten an der Zielkurve
 // (SL.levelCurve -> targetSteps) liegt, und trägt die Liste in js/levels.js ein.
 //
-//   node tools/level-seeds.js           -> Tabelle anzeigen + LEVEL_SEEDS in js/levels.js schreiben
-//   node tools/level-seeds.js --dry     -> nur anzeigen
+//   npm run seeds                                 -> Tabelle anzeigen + LEVEL_SEEDS schreiben
+//   node games/maze/tools/level-seeds.js --dry    -> nur anzeigen
 //
-// Danach SL.LEVEL_SET_VERSION in js/levels.js erhöhen, falls sich Mazes geändert haben.
+// Danach SL.LEVEL_SET_VERSION in levels.js erhöhen, falls sich Mazes geändert haben.
 const fs = require("fs");
 const path = require("path");
 

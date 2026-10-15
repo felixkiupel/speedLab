@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="400" height="250">
+<rect width="400" height="250" fill="#ebe3d5"/>
+<g transform="translate(-200 -350)">
+<rect width="950" height="650" fill="#fbf7f0"/>
+<path d="M0.5 0V650M50.5 0V650M100.5 0V650M150.5 0V650M200.5 0V650M250.5 0V650M300.5 0V650M350.5 0V650M400.5 0V650M450.5 0V650M500.5 0V650M550.5 0V650M600.5 0V650M650.5 0V650M700.5 0V650M750.5 0V650M800.5 0V650M850.5 0V650M900.5 0V650M950.5 0V650M0 0.5H950M0 50.5H950M0 100.5H950M0 150.5H950M0 200.5H950M0 250.5H950M0 300.5H950M0 350.5H950M0 400.5H950M0 450.5H950M0 500.5H950M0 550.5H950M0 600.5H950M0 650.5H950" stroke="#e8e0d2" stroke-width="1" fill="none"/>
+<path d="M0 0h950v50h-950zM0 50h50v50h-50zM200 50h50v50h-50zM500 50h50v50h-50zM800 50h50v50h-50zM900 50h50v50h-50zM0 100h150v50h-150zM200 100h50v50h-50zM300 100h150v50h-150zM500 100h50v50h-50zM600 100h50v50h-50zM700 100h50v50h-50zM800 100h50v50h-50zM900 100h50v50h-50zM0 150h50v50h-50zM200 150h50v50h-50zM300 150h50v50h-50zM400 150h50v50h-50zM600 150h50v50h-50zM800 150h50v50h-50zM900 150h50v50h-50zM0 200h50v50h-50zM100 200h150v50h-150zM300 200h50v50h-50zM400 200h250v50h-250zM700 200h50v50h-50zM800 200h50v50h-50zM900 200h50v50h-50zM0 250h50v50h-50zM200 250h50v50h-50zM400 250h50v50h-50zM600 250h50v50h-50zM700 250h50v50h-50zM800 250h50v50h-50zM900 250h50v50h-50zM0 300h150v50h-150zM200 300h150v50h-150zM400 300h50v50h-50zM500 300h150v50h-150zM700 300h50v50h-50zM800 300h50v50h-50zM900 300h50v50h-50zM0 350h50v50h-50zM100 350h50v50h-50zM200 350h50v50h-50zM500 350h50v50h-50zM700 350h50v50h-50zM800 350h50v50h-50zM900 350h50v50h-50zM0 400h50v50h-50zM100 400h50v50h-50zM200 400h350v50h-350zM600 400h150v50h-150zM800 400h50v50h-50zM900 400h50v50h-50zM0 450h50v50h-50zM100 450h50v50h-50zM300 450h50v50h-50zM600 450h50v50h-50zM700 450h50v50h-50zM900 450h50v50h-50zM0 500h50v50h-50zM100 500h150v50h-150zM300 500h50v50h-50zM400 500h250v50h-250zM700 500h150v50h-150zM900 500h50v50h-50zM0 550h50v50h-50zM400 550h50v50h-50zM900 550h50v50h-50zM0 600h950v50h-950z" fill="#2b2420"/>
+<rect x="859" y="559" width="32" height="32" fill="none" stroke="#2b2420" stroke-width="2"/>
+<circle cx="775" cy="125" r="6" fill="#2b2420"/>
+<circle cx="575" cy="575" r="6" fill="#2b2420"/>
+<circle cx="625" cy="575" r="6" fill="#2b2420"/>
+<circle cx="875" cy="125" r="6" fill="#2b2420"/>
+<circle cx="275" cy="175" r="6" fill="#2b2420"/>
+<circle cx="575" cy="175" r="6" fill="#2b2420"/>
+<circle cx="475" cy="125" r="6" fill="#2b2420"/>
+<circle cx="825" cy="475" r="6" fill="#2b2420"/>
+<circle cx="575" cy="75" r="6" fill="#2b2420"/>
+<circle cx="575" cy="475" r="6" fill="#2b2420"/>
+<circle cx="475" cy="375" r="6" fill="#2b2420"/>
+<path d="M217 490V460" stroke="#2b2420" stroke-width="2" stroke-linecap="round"/>
+<path d="M217 460L238 466.5L217 473.5Z" fill="#2b2420" stroke="#2b2420" stroke-width="2" stroke-linejoin="round"/>
+<path d="M667 340V310" stroke="#2b2420" stroke-width="2" stroke-linecap="round"/>
+<path d="M667 310L688 316.5L667 323.5Z" fill="#fbf7f0" stroke="#2b2420" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="275" cy="525" r="9" fill="#c7bcaa" fill-opacity="0.11"/>
+<circle cx="275" cy="575" r="9" fill="#c7bcaa" fill-opacity="0.21"/>
+<circle cx="325" cy="575" r="9" fill="#c7bcaa" fill-opacity="0.32"/>
+<circle cx="375" cy="575" r="9" fill="#c7bcaa" fill-opacity="0.43"/>
+<circle cx="375" cy="525" r="9" fill="#c7bcaa" fill-opacity="0.54"/>
+<circle cx="375" cy="475" r="9" fill="#c7bcaa" fill-opacity="0.64"/>
+<circle cx="425" cy="475" r="16" fill="#2b2420" stroke="rgba(43,36,32,0.55)" stroke-width="1.12"/>
+<circle cx="418.6" cy="473.72" r="5.12" fill="#fbf7f0" stroke="#2b2420" stroke-width="0.8"/>
+<circle cx="420.84" cy="473.72" r="2.24" fill="#2b2420"/>
+<circle cx="431.4" cy="473.72" r="5.12" fill="#fbf7f0" stroke="#2b2420" stroke-width="0.8"/>
+<circle cx="433.64" cy="473.72" r="2.24" fill="#2b2420"/>
+</g>
+</svg>

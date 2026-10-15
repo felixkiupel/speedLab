@@ -57,11 +57,13 @@ SL.Settings = (function () {
     return !overlay().classList.contains("hidden");
   }
 
-  // Spielstand löschen braucht einen zweiten Klick innerhalb von 4 s
+  // Fortschritt löschen braucht einen zweiten Klick innerhalb von 4 s. Gelöscht wird nur Maze
+  // (Level, Skins, Bestzeiten) - Coins und Serie gehören dem spielübergreifenden Profil.
+  const RESET_LABEL = "Maze-Fortschritt löschen";
   function disarmReset() {
     resetArmedUntil = 0;
     const btn = document.getElementById("btn-reset-save");
-    btn.textContent = "Spielstand löschen";
+    btn.textContent = RESET_LABEL;
     btn.classList.remove("armed");
   }
 
@@ -73,7 +75,7 @@ SL.Settings = (function () {
       return;
     }
     resetArmedUntil = Date.now() + 4000;
-    btn.textContent = "Wirklich alles löschen?";
+    btn.textContent = "Level & Skins wirklich löschen?";
     btn.classList.add("armed");
     setTimeout(() => { if (Date.now() >= resetArmedUntil) disarmReset(); }, 4100);
   }

@@ -1,4 +1,5 @@
-// Coin-/Unlock-/Shop-Logik
+// Coin-/Unlock-/Shop-Logik. Die Coins selbst liegen im spielübergreifenden Profil (SL.Profile),
+// damit man sie auch in anderen Spielen ausgeben kann.
 window.SL = window.SL || {};
 
 SL.RARITIES = {
@@ -69,18 +70,17 @@ SL.Economy = {
     return state.unlockedLevels.includes(levelId);
   },
 
-  canAffordUnlock(state, levelId) {
+  canAffordUnlock(levelId) {
     const level = SL.getLevel(levelId);
     if (!level) return false;
-    return state.coins >= level.unlockCost;
+    return SL.Profile.coins() >= level.unlockCost;
   },
 
   unlockLevel(state, levelId) {
     const level = SL.getLevel(levelId);
     if (!level) return false;
     if (this.isLevelUnlocked(state, levelId)) return true;
-    if (state.coins < level.unlockCost) return false;
-    state.coins -= level.unlockCost;
+    if (!SL.Profile.spend(level.unlockCost)) return false;
     state.unlockedLevels.push(levelId);
     SL.Storage.save(state);
     return true;
@@ -113,8 +113,7 @@ SL.Economy = {
     const cos = SL.getCosmetic(cosmeticId);
     if (!cos || state.ownedCosmetics.includes(cosmeticId)) return false;
     if (!this.hasStarsFor(state, cos)) return false;
-    if (state.coins < cos.price) return false;
-    state.coins -= cos.price;
+    if (!SL.Profile.spend(cos.price)) return false;
     state.ownedCosmetics.push(cosmeticId);
     state.equipped[cos.type] = cosmeticId;
     SL.Storage.save(state);
@@ -164,7 +163,7 @@ SL.Economy = {
     const bestTimeMs = prev ? Math.min(prev.bestTimeMs, timeMs) : timeMs;
     const bestStars = prev ? Math.max(prev.stars, stars) : stars;
     state.levelResults[key] = { bestTimeMs, stars: bestStars, timesPlayed };
-    state.coins += coinsEarned;
     SL.Storage.save(state);
+    SL.Profile.addCoins(coinsEarned);
   },
 };

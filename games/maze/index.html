@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>speedLab Maze</title>
+<meta name="description" content="speedLab Maze – finde den Weg durchs Labyrinth, so schnell du kannst.">
+<meta name="theme-color" content="#fbf7f0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../shared/css/base.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- MAIN MENU -->
+  <section id="screen-menu" class="screen active">
+    <!-- Zurück zur Spieleauswahl + Coins (spielübergreifend, daher schon im Menü sichtbar) -->
+    <header class="topbar menu-topbar">
+      <a class="btn btn-ghost btn-back" href="../../">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Alle Spiele
+      </a>
+      <span></span>
+      <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="menu-coins">0</span></div>
+    </header>
+    <div class="menu-card">
+      <!-- Logo-Figur: die Kugel im Basis-Schwarz, unabhängig vom ausgerüsteten Skin -->
+      <div class="mascot face brand-mascot" aria-hidden="true"><span class="eye left"></span><span class="eye right"></span></div>
+      <div class="logo">
+        <h1 class="logo-word" aria-label="speedLab"><span class="logo-speed">speed</span><span class="logo-lab">Lab</span></h1>
+        <div class="logo-tag">Maze</div>
+      </div>
+      <p class="tagline">Finde den Weg. Werde schneller.</p>
+      <div class="menu-buttons">
+        <button id="btn-play" class="btn btn-primary">Spielen</button>
+        <button id="btn-shop" class="btn">Shop</button>
+        <button id="btn-settings" class="btn btn-ghost">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="8" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Einstellungen
+        </button>
+      </div>
+
+      <!-- Tägliches Labyrinth: Datum | Titel + Schwierigkeit | Play/Ergebnis. Die Serie zeigt die
+           Startseite (spielübergreifend). Inhalt setzt ui.js (refreshMenu). -->
+      <button id="btn-daily" class="daily-card" type="button">
+        <span class="daily-main">
+          <span class="daily-date" aria-hidden="true">
+            <span id="daily-month" class="daily-month">OKT</span>
+            <span id="daily-day" class="daily-day">14</span>
+          </span>
+          <span class="daily-info">
+            <span class="daily-kicker">Tägliches Labyrinth</span>
+            <span id="daily-title" class="daily-title">#14</span>
+          </span>
+          <span id="daily-status" class="daily-status"></span>
+        </span>
+      </button>
+    </div>
+
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section id="screen-levels" class="screen">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-back" data-nav="screen-menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Menü
+      </button>
+      <h2>Level</h2>
+      <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="levels-coins">0</span></div>
+    </header>
+    <div id="level-map" class="level-map"></div>
+  </section>
+
+  <!-- SHOP -->
+  <section id="screen-shop" class="screen">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-back" data-nav="screen-menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Menü
+      </button>
+      <h2>Shop</h2>
+      <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></div>
+    </header>
+    <div id="shop" class="shop"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-left">
+        <span id="hud-level" class="hud-pill">Level 1</span>
+      </div>
+      <div class="hud-center">
+        <span id="hud-timer">0.00s</span>
+        <div id="hud-stars" class="hud-stars" aria-label="Erreichbare Sterne"></div>
+      </div>
+      <div class="hud-right">
+        <span class="coin-pill hud-pill"><span class="coin-icon" aria-hidden="true"></span><span id="hud-coins">0</span></span>
+        <button id="btn-pause" class="btn btn-icon" aria-label="Pause">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2"/><rect x="13.5" y="5.5" width="4" height="13" rx="1.2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <!-- Rahmen exakt so groß wie der Canvas, damit der Start-Hinweis innerhalb des Spielfelds sitzt -->
+      <div class="canvas-frame">
+        <canvas id="game-canvas"></canvas>
+        <div id="start-hint" class="start-hint">Pfeiltaste oder WASD drücken, um zu starten</div>
+      </div>
+    </div>
+
+    <!-- Tipp-Steuerung (Handy): vier runde Knöpfe als Raute wie die Symboltasten am Controller.
+         Getroffen wird großzügig: jeder Tipp in der unteren Fläche zählt für den Knopf in dieser
+         Richtung (von der Rauten-Mitte aus gesehen), man muss den Knopf nicht genau treffen. -->
+    <div class="tap-pad" aria-hidden="true">
+      <div class="tap-diamond">
+        <span class="tap-btn" data-zone="N"></span>
+        <span class="tap-btn" data-zone="E"></span>
+        <span class="tap-btn" data-zone="S"></span>
+        <span class="tap-btn" data-zone="W"></span>
+      </div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <div class="mascot small face"><span class="eye left"></span><span class="eye right"></span></div>
+        <h2>Pause</h2>
+        <button id="btn-resume" class="btn btn-primary">Weiter</button>
+        <button id="btn-restart" class="btn">Neustart</button>
+        <button id="btn-pause-settings" class="btn">Einstellungen</button>
+        <button id="btn-quit" class="btn btn-ghost" data-nav="screen-levels">Verlassen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="overlay-card results-card">
+      <div class="mascot small face"><span class="eye left"></span><span class="eye right"></span></div>
+      <h2 id="results-title">Level geschafft!</h2>
+      <div class="result-stars" id="results-stars"></div>
+      <span id="results-badge" class="results-badge hidden">Neue Bestzeit</span>
+      <div class="result-rows">
+        <div class="result-row"><span>Zeit</span><span id="results-time" class="result-value">0.00s</span></div>
+        <div class="result-row"><span>3 Sterne</span><span id="results-target" class="result-value">–</span></div>
+        <div class="result-row"><span>Crashes</span><span id="results-crashes" class="result-value">0</span></div>
+        <div class="result-row"><span>Coins verdient</span><span id="results-coins" class="result-value">+0</span></div>
+      </div>
+      <p id="results-note" class="results-note"></p>
+      <p id="results-unlock" class="results-unlock hidden"></p>
+      <div class="results-buttons">
+        <button id="btn-next-level" class="btn btn-primary">Nächstes Level</button>
+        <button id="btn-share" class="btn btn-primary hidden">Ergebnis teilen</button>
+        <button id="btn-retry" class="btn">Neustart</button>
+        <button id="btn-back-levels" class="btn btn-ghost" data-nav="screen-levels">Level-Auswahl</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- EINSTELLUNGEN (Overlay über jedem Screen, auch über der Pause) -->
+  <div id="settings-overlay" class="overlay settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="overlay-card settings-card">
+      <h2 id="settings-title">Einstellungen</h2>
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-text"><b>Töne</b><span>Schritte, Coins, Crash, Ziel</span></div>
+          <button class="toggle" data-setting="sound" role="switch" aria-label="Töne"><span></span></button>
+        </div>
+        <div class="setting-row setting-volume-row">
+          <div class="setting-text"><b>Lautstärke</b><span id="setting-volume-value">70 %</span></div>
+          <input id="setting-volume" class="slider" type="range" min="0" max="100" step="5" aria-label="Lautstärke">
+        </div>
+        <div class="setting-row">
+          <div class="setting-text"><b>Vibration</b><span>Bei Crash, Checkpoint und Ziel</span></div>
+          <button class="toggle" data-setting="vibration" role="switch" aria-label="Vibration"><span></span></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-text"><b>Effekte</b><span>Wackeln, Partikel, Konfetti</span></div>
+          <button class="toggle" data-setting="effects" role="switch" aria-label="Effekte"><span></span></button>
+        </div>
+        <div class="setting-row setting-row-stack">
+          <div class="setting-text"><b>Tipp-Steuerung</b><span>Vier Knöpfe als Raute unter dem Spielfeld</span></div>
+          <div class="segmented" data-setting="touchControls">
+            <button type="button" data-value="auto">Auto</button>
+            <button type="button" data-value="on">An</button>
+            <button type="button" data-value="off">Aus</button>
+          </div>
+        </div>
+      </div>
+      <button id="btn-settings-close" class="btn btn-primary">Fertig</button>
+      <button id="btn-reset-save" class="btn btn-ghost btn-danger">Maze-Fortschritt löschen</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+</div>
+
+<!-- Spielübergreifend: Links, Tage + Profil (Coins, Daily-Serie) -->
+<script src="../../shared/js/links.js"></script>
+<script src="../../shared/js/days.js"></script>
+<script src="../../shared/js/profile.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/maze.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/game.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
