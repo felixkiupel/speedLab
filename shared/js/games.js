@@ -12,4 +12,13 @@ SL.GAMES = [
     tags: ["30 Level", "Skins"],
     daily: true, // hat ein tägliches Rätsel, das für die Serie zählt
   },
+  {
+    id: "drift",
+    name: "Drift",
+    tagline: "Rutsch bis zur Wand. Werde schneller.",
+    path: "games/drift/",
+    preview: "games/drift/preview.svg",
+    tags: ["30 Level", "Puzzle"],
+    daily: false,
+  },
 ];

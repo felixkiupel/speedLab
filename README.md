@@ -26,6 +26,10 @@ games/maze/           Das Labyrinth-Spiel
   index.html, css/, js/
   preview.svg         Kachelbild auf der Startseite
   tools/              Hilfsskripte (npm run seeds, npm run maze-preview)
+games/drift/          Das Eis-Rutsch-Puzzle
+  index.html, css/, js/
+  preview.svg         Kachelbild auf der Startseite
+  tools/level-gen.js  Erzeugt die Level-Karten (npm run drift-levels)
 ```
 
 ## Speicherstand

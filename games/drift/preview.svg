@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="400" height="250">
+<!-- Ausschnitt eines Drift-Bretts (Feld = 50px, Brett beginnt bei 31/31): die Figur ist nach rechts
+     an den Fels, runter aufs Schneefeld und rutscht jetzt nach rechts ins Ziel. Die blassen Spuren
+     zeigen den Weg dorthin. -->
+<defs>
+<radialGradient id="light" cx="0.15" cy="0.1" r="0.9">
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.8"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+</radialGradient>
+</defs>
+<rect width="400" height="250" fill="#ebe3d5"/>
+<rect x="31" y="31" width="400" height="250" fill="#fbf7f0"/>
+<rect x="31" y="31" width="400" height="250" fill="url(#light)"/>
+<path d="M81.5 31V250M131.5 31V250M181.5 31V250M231.5 31V250M281.5 31V250M331.5 31V250M381.5 31V250M31 81.5H400M31 131.5H400M31 181.5H400M31 231.5H400" stroke="#efe7da" stroke-width="1" fill="none"/>
+<!-- Bande -->
+<rect x="28" y="28" width="420" height="270" rx="14" fill="none" stroke="#2b2420" stroke-width="6"/>
+
+<!-- Schneefeld (2,2) -->
+<rect x="134.5" y="134.5" width="43" height="43" rx="10" fill="#eee7db"/>
+<g fill="#d3c9b7">
+<circle cx="139.9" cy="139.9" r="1.75"/><circle cx="150.6" cy="139.9" r="1.75"/><circle cx="161.4" cy="139.9" r="1.75"/><circle cx="172.1" cy="139.9" r="1.75"/>
+<circle cx="145.2" cy="150.6" r="1.75"/><circle cx="156" cy="150.6" r="1.75"/><circle cx="166.8" cy="150.6" r="1.75"/>
+<circle cx="139.9" cy="161.4" r="1.75"/><circle cx="150.6" cy="161.4" r="1.75"/><circle cx="161.4" cy="161.4" r="1.75"/><circle cx="172.1" cy="161.4" r="1.75"/>
+<circle cx="145.2" cy="172.1" r="1.75"/><circle cx="156" cy="172.1" r="1.75"/><circle cx="166.8" cy="172.1" r="1.75"/>
+</g>
+
+<!-- Kufenspuren: alte Rutscher blass, der aktuelle kräftig -->
+<g stroke="#ddd3c2" stroke-width="1.75" stroke-linecap="round" fill="none">
+<path d="M56 50.5H156M56 61.5H156" stroke-opacity="0.45"/>
+<path d="M150.5 56V156M161.5 56V156" stroke-opacity="0.7"/>
+<path d="M156 150.5H219M156 161.5H219"/>
+</g>
+
+<!-- Felsen mit weichem Schatten -->
+<g fill="#2b2420" fill-opacity="0.14">
+<rect x="184" y="36.5" width="44" height="44" rx="9"/>
+<rect x="384" y="86.5" width="44" height="44" rx="9"/>
+<rect x="34" y="136.5" width="44" height="44" rx="9"/>
+<rect x="284" y="136.5" width="44" height="44" rx="9"/>
+<rect x="84" y="186.5" width="44" height="44" rx="9"/>
+<rect x="334" y="186.5" width="44" height="44" rx="9"/>
+</g>
+<g fill="#2b2420">
+<rect x="184" y="34" width="44" height="44" rx="9"/>
+<rect x="384" y="84" width="44" height="44" rx="9"/>
+<rect x="34" y="134" width="44" height="44" rx="9"/>
+<rect x="284" y="134" width="44" height="44" rx="9"/>
+<rect x="84" y="184" width="44" height="44" rx="9"/>
+<rect x="334" y="184" width="44" height="44" rx="9"/>
+</g>
+
+<!-- Ziel (2,4) mit Puls -->
+<rect x="234.5" y="134.5" width="43" height="43" fill="none" stroke="#2b2420" stroke-opacity="0.16" stroke-width="3"/>
+<rect x="241" y="141" width="30" height="30" fill="none" stroke="#2b2420" stroke-width="4.25"/>
+
+<!-- Coins -->
+<circle cx="106" cy="106" r="5.25" fill="#2b2420"/>
+<circle cx="306" cy="56" r="5.25" fill="#2b2420"/>
+<circle cx="356" cy="156" r="5.25" fill="#2b2420"/>
+<circle cx="256" cy="206" r="5.25" fill="#2b2420"/>
+
+<!-- Bewegungs-Schatten + Figur, in Fahrtrichtung gestreckt -->
+<g fill="#2b2420">
+<circle cx="174" cy="156" r="10.2" fill-opacity="0.05"/>
+<circle cx="189" cy="156" r="12.2" fill-opacity="0.08"/>
+<circle cx="204" cy="156" r="14.1" fill-opacity="0.16"/>
+</g>
+<g transform="translate(219 156) scale(1.16 0.9) translate(-219 -156)">
+<circle cx="219" cy="156" r="16" fill="#2b2420"/>
+<circle cx="212.6" cy="154.72" r="5.12" fill="#fbf7f0" stroke="#2b2420" stroke-width="0.8"/>
+<circle cx="214.84" cy="154.72" r="2.24" fill="#2b2420"/>
+<circle cx="225.4" cy="154.72" r="5.12" fill="#fbf7f0" stroke="#2b2420" stroke-width="0.8"/>
+<circle cx="227.64" cy="154.72" r="2.24" fill="#2b2420"/>
+</g>
+</svg>
