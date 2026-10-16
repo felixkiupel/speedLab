@@ -4,7 +4,7 @@ window.SL = window.SL || {};
 SL.UI = (function () {
   const MAX_CELL = 76; // größer wird ein Feld auch auf riesigen Bildschirmen nicht
   const SWIPE_PX = 22; // so weit muss der Finger, bis ein Wischer als Zug zählt
-  const MARK_KEEP_MS = 2000; // Kufenspuren danach aus der Liste werfen (Renderer blendet sie vorher aus)
+  const MARK_KEEP_MS = 2000; // Rutscher danach aus der Liste werfen (der Schweif ist dann längst weg)
   const FALL_RESTART_MS = 1000; // nach dem Reinfallen so lange zeigen, dann startet das Level neu
 
   let state; // Save-State (aus Storage)
@@ -26,7 +26,7 @@ SL.UI = (function () {
   let guide = null; // Tutorial-Pfeil { dir, path, start }
   let highlight = null; // Feldtyp, der als "Neu" pulsiert (bis zum ersten Zug)
   let introStart = null; // Beginn der Brett-Einblendung
-  let marks = []; // Kufenspuren
+  let marks = []; // Rutscher, die einen Schweif hinter sich herziehen
   let goalFlashAt = null; // übers Ziel gerutscht
   let hit = null; // zuletzt getroffener Fels / Rand
   let passHintShown = false;
@@ -507,7 +507,7 @@ SL.UI = (function () {
     session.onUndo = () => {
       SL.Audio.play("undo");
       hudCoins.textContent = session.collected.size;
-      // Mitten im Rutschen zurückgenommen: die Spur wächst nicht weiter
+      // Mitten im Rutschen zurückgenommen: der Schweif zieht sich dort zusammen
       const now = performance.now();
       const last = marks[marks.length - 1];
       if (last && now < last.start + last.duration) last.cutAt = now;

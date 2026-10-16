@@ -12,6 +12,9 @@ const COLOR_TRAIL = "#c7bcaa";
 const COLOR_DANGER = "#c0392b";
 const COLOR_SPARK = "#f2a900";
 
+const GOAL_HALF = 0.32; // halbe Seitenlänge des Ziel-Rahmens in Feldgrößen (Mitte der Linie)
+const goalLineWidth = (cellSize) => Math.max(2, cellSize * 0.1);
+
 SL.Renderer = {
   // Baut eine statische Offscreen-Canvas mit dem Grid + Ziel (wird nur einmal pro Maze gezeichnet).
   // pixelRatio = devicePixelRatio, damit das Bild auf HiDPI-Displays scharf bleibt; gezeichnet
@@ -56,9 +59,9 @@ SL.Renderer = {
     // Ziel: schlichtes Quadrat-Outline in der Zielzelle
     const gx = end.c * cellSize + cellSize / 2;
     const gy = end.r * cellSize + cellSize / 2;
-    const gs = cellSize * 0.32;
+    const gs = cellSize * GOAL_HALF;
     ctx.strokeStyle = COLOR_GOAL;
-    ctx.lineWidth = Math.max(2, cellSize * 0.1);
+    ctx.lineWidth = goalLineWidth(cellSize);
     ctx.strokeRect(gx - gs, gy - gs, gs * 2, gs * 2);
 
     return layer;
@@ -70,9 +73,10 @@ SL.Renderer = {
   // Bildschirmkoordinaten umgerechnet wird. Kein Scrollen/Lerp - die Kamera "teleportiert"
   // mit dem Punkt zusammen, passend zum Rest der Bewegung.
   // Alle Koordinaten sind logische Pixel (viewSize); pixelRatio skaliert nur die Ausgabe.
-  // shake = Versatz fürs Bildschirm-Wackeln, squash = 0..1 Stärke des Schritt-Squashs.
+  // shake = Versatz fürs Bildschirm-Wackeln, squash = 0..1 Stärke des Schritt-Squashs,
+  // finishMs = Zeit seit dem Zieleinlauf (null = noch unterwegs) für die Verwandlung der Figur.
   render(ctx, state) {
-    const { mazeLayer, cellSize, viewSize, pixelRatio, coins, collectedSet, checkpoints, player, trail, skin, trailStyle, time, direction, flashStrength, effects, shake, squash } = state;
+    const { mazeLayer, cellSize, viewSize, pixelRatio, coins, collectedSet, checkpoints, player, trail, skin, trailStyle, time, direction, flashStrength, effects, shake, squash, finishMs } = state;
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     const camX = player.x - viewSize / 2;
     const camY = player.y - viewSize / 2;
@@ -117,8 +121,10 @@ SL.Renderer = {
     drawTrail(ctx, points, cellSize, trailStyle, skin, time);
 
     // Spieler: immer exakt in der Canvas-Mitte. Die Pupillen schauen in "direction",
-    // die Richtung des letzten erfolgreichen Schritts.
-    drawPlayer(ctx, viewSize / 2, viewSize / 2, cellSize * 0.3, skin, direction, time, squash);
+    // die Richtung des letzten erfolgreichen Schritts. Im Ziel wird er zum Quadrat.
+    const radius = cellSize * 0.3;
+    const body = finishMs == null ? null : goalBody(radius, cellSize, finishMs);
+    drawPlayer(ctx, viewSize / 2, viewSize / 2, radius, skin, direction, time, squash, body);
 
     effects.render(ctx, toScreen);
     ctx.restore();
@@ -197,9 +203,49 @@ SL.Renderer.drawScenePreview = drawCorridorScene;
 
 // ---------- Figur ----------
 
+// Ziel-Verwandlung wie in Drift: Im Ziel wächst die Figur vom Kreis zum Quadrat, bis sie den
+// Rahmen komplett ausfüllt - mit einem kleinen Überschwinger am Ende. Die Augen bleiben.
+const GOAL_MORPH_MS = 360;
+function goalMorph(ms) {
+  const t = Math.min(1, Math.max(0, ms / GOAL_MORPH_MS));
+  const c1 = 1.4, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+// Körperform im Ziel: { half, corner } - halbe Seitenlänge und Eckenradius (corner = half ist
+// ein Kreis). Am Ende so groß wie der Rahmen außen; die runden Ecken ragen ein Stück darüber,
+// damit keine dunkle Rahmenspitze hervorschaut.
+function goalBody(radius, cellSize, ms) {
+  const m = goalMorph(ms);
+  const corner = cellSize * 0.05;
+  const half = cellSize * GOAL_HALF + goalLineWidth(cellSize) / 2 + corner * 0.3;
+  return {
+    half: radius + (half - radius) * m,
+    corner: radius + (corner - radius) * Math.min(1, m),
+  };
+}
+
+// Pfad der Figur: Kreis, oder mit body das Quadrat mit runden Ecken (corner >= half = Kreis)
+function bodyPath(ctx, x, y, r, body) {
+  ctx.beginPath();
+  if (!body) {
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    return;
+  }
+  const { half } = body;
+  const k = Math.max(0, Math.min(body.corner, half));
+  ctx.moveTo(x, y - half);
+  ctx.arcTo(x + half, y - half, x + half, y + half, k);
+  ctx.arcTo(x + half, y + half, x - half, y + half, k);
+  ctx.arcTo(x - half, y + half, x - half, y - half, k);
+  ctx.arcTo(x - half, y - half, x + half, y - half, k);
+  ctx.closePath();
+}
+
 // squash (0..1): direkt nach einem Schritt wird die Figur kurz in Laufrichtung gestreckt und
-// quer dazu gestaucht - gibt dem "Teleport" pro Feld einen spürbaren Ruck.
-function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0) {
+// quer dazu gestaucht - gibt dem "Teleport" pro Feld einen spürbaren Ruck. body: Form im Ziel
+// (goalBody), sonst Kreis.
+function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0, body = null) {
   const d = direction ? SL.DIRS[direction] : null;
   const k = d ? squash * 0.22 : 0;
   ctx.save();
@@ -209,7 +255,7 @@ function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0) {
     ctx.scale(horizontal ? 1 + k : 1 - k * 0.6, horizontal ? 1 - k * 0.6 : 1 + k);
     ctx.translate(-x, -y);
   }
-  fillBody(ctx, x, y, radius, skin, time);
+  fillBody(ctx, x, y, radius, skin, time, body);
   drawFace(ctx, x, y, direction, radius);
   ctx.restore();
 }
@@ -245,14 +291,15 @@ function drawFlag(ctx, x, y, cellSize, reached) {
 // Feste "Sterne" für den Galaxie-Skin: [dx, dy, Größe] relativ zum Radius
 const GALAXY_STARS = [[-0.45, 0.35, 0.07], [0.5, -0.1, 0.06], [0.15, 0.55, 0.05], [-0.1, -0.55, 0.045], [0.55, 0.42, 0.04], [-0.62, -0.15, 0.04]];
 
-// Füllt den Körper je nach Skin-Muster. Alles wird auf den Kreis geclippt, danach kommt eine
-// feine dunkle Kontur, damit helle Skins auf dem cremefarbenen Weg nicht verschwimmen.
-function fillBody(ctx, x, y, r, skin, time) {
+// Füllt den Körper je nach Skin-Muster. Alles wird auf die Form geclippt (Kreis, im Ziel das
+// Quadrat), danach kommt eine feine dunkle Kontur, damit helle Skins auf dem cremefarbenen Weg
+// nicht verschwimmen. Muster richten sich nach der halben Breite der Form.
+function fillBody(ctx, x, y, radius, skin, time, body = null) {
   const colors = skin.colors;
   const [c0, c1 = c0, c2 = c1] = colors;
+  const r = body ? body.half : radius;
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  bodyPath(ctx, x, y, radius, body);
   ctx.fillStyle = c0;
   ctx.fill();
   ctx.clip();
@@ -281,10 +328,10 @@ function fillBody(ctx, x, y, r, skin, time) {
       break;
     }
     case "ring": {
-      ctx.lineWidth = r * 0.22;
+      // Band entlang des Rands: doppelt so breit gezogen, die Hälfte außen schneidet der Clip weg
+      ctx.lineWidth = r * 0.44;
       ctx.strokeStyle = c1;
-      ctx.beginPath();
-      ctx.arc(x, y, r - ctx.lineWidth / 2, 0, Math.PI * 2);
+      bodyPath(ctx, x, y, radius, body);
       ctx.stroke();
       break;
     }
@@ -330,9 +377,8 @@ function fillBody(ctx, x, y, r, skin, time) {
   ctx.restore();
 
   if (skin.pattern !== "ring") {
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(1, r * 0.07);
+    bodyPath(ctx, x, y, radius, body);
+    ctx.lineWidth = Math.max(1, radius * 0.07);
     ctx.strokeStyle = "rgba(43, 36, 32, 0.55)";
     ctx.stroke();
   }

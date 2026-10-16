@@ -510,7 +510,8 @@ SL.UI = (function () {
         flashStrength: session.getCrashFlashStrength(),
         effects,
         shake: effects.getShakeOffset(),
-        squash: effects.enabled && sinceMove < 120 ? 1 - sinceMove / 120 : 0,
+        squash: effects.enabled && sinceMove < 120 && !session.finished ? 1 - sinceMove / 120 : 0,
+        finishMs: session.finishedAt != null ? now - session.finishedAt : null,
       });
     }
 

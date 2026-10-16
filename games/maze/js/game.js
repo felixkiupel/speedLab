@@ -21,6 +21,7 @@ SL.GameSession = function GameSession(levelConfig, maze) {
   this.currentDir = null; // letzte erfolgreiche Richtung - für Crash-Logik und das Gesicht
   this.started = false;
   this.finished = false;
+  this.finishedAt = null; // performance.now() beim Zieleinlauf (für die Verwandlung der Figur)
   // Echte Stoppuhr über performance.now() statt aufsummierter Frame-Deltas - sonst läuft
   // die Zeit bei niedriger FPS zu langsam. elapsedMs = abgeschlossene Laufabschnitte,
   // runningSince = Beginn des aktuellen Abschnitts (null = Uhr steht, z.B. in der Pause).
@@ -100,6 +101,7 @@ SL.GameSession.prototype.requestDirection = function requestDirection(dirKey) {
   if (this.cur.r === this.maze.end.r && this.cur.c === this.maze.end.c) {
     this.pauseClock(); // Endzeit exakt im Moment des Zieleinlaufs, nicht erst beim nächsten Frame
     this.finished = true;
+    this.finishedAt = performance.now();
     if (this.onFinish) this.onFinish(this.buildResult());
   }
 };

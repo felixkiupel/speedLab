@@ -1,6 +1,6 @@
 // Canvas-Rendering im Stil von Maze: warmes Creme mit dezentem Gitter, Felsen als dunkle Blöcke,
 // Ziel als Quadrat-Rahmen, Coins als dunkle Punkte. Der Boden (Gitter, Schnee) liegt vorgerendert
-// in einer Offscreen-Canvas; Felsen, Ziel, Coins, Kufenspuren und die Figur werden jeden Frame
+// in einer Offscreen-Canvas; Felsen, Ziel, Coins, der Schweif und die Figur werden jeden Frame
 // gezeichnet, weil sie animiert sind. Alle Koordinaten in logischen (CSS-)Pixeln.
 window.SL = window.SL || {};
 
@@ -9,10 +9,8 @@ const CREAM = "#fbf7f0";
 const GRID_LINE = "#efe7da";
 const SNOW_FILL = "#eee7db";
 const SNOW_DOT = "#d3c9b7";
-const SKATE_MARK = "#ddd3c2";
 
 const INTRO_MS = 520; // Einblendung beim Levelstart (rein optisch, die Uhr startet erst beim ersten Zug)
-const MARK_FADE_MS = 900; // so lange bleiben Kufenspuren nach der Landung sichtbar
 
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -56,7 +54,7 @@ SL.Renderer = {
     for (let r = 0; r < board.rows; r++) {
       for (let c = 0; c < board.cols; c++) {
         if (board.grid[r][c] === SL.SNOW) drawSnow(ctx, c * cell, r * cell, cell);
-        else if (board.grid[r][c] === SL.HOLE) drawHole(ctx, c * cell, r * cell, cell, r * 7 + c * 13);
+        else if (board.grid[r][c] === SL.HOLE) drawHole(ctx, c * cell, r * cell, cell);
       }
     }
     return layer;
@@ -81,7 +79,12 @@ SL.Renderer = {
     ctx.globalAlpha = 1;
 
     if (s.highlight != null) drawHighlight(ctx, board, s.highlight, cell, now);
-    drawMarks(ctx, s.marks, cell, now);
+    const playerRadius = cell * 0.32 * popScale((introT - 0.35) / 0.5);
+    drawTrails(ctx, s.marks, cell, now, playerRadius);
+
+    // Ins Loch gefallen: die Figur versinkt dort statt obendrauf gezeichnet zu werden
+    const fallMs = session.getFallMs(now);
+    if (fallMs != null) drawHoleFall(ctx, session.pos, cell, fallMs, playerRadius, session.dir);
 
     const maxDist = board.rows + board.cols;
     for (let r = 0; r < board.rows; r++) {
@@ -116,13 +119,12 @@ SL.Renderer = {
     }
     if (s.hit && s.hit.edge) drawEdgeHit(ctx, s.hit, width, height, now);
 
-    const pos = session.getPlayerPos(now);
-    let radius = cell * 0.32 * popScale((introT - 0.35) / 0.5);
-    // Ins Loch gefallen: Figur schrumpft weg
-    const fall = session.getFallProgress(now);
-    if (fall != null) radius *= 1 - fall * fall;
-    if (session.anim) drawMotionGhosts(ctx, session.anim, pos, cell, radius, now);
-    drawPlayer(ctx, (pos.c + 0.5) * cell, (pos.r + 0.5) * cell, radius, session.dir, session.getDeform(now));
+    if (fallMs == null) {
+      const pos = session.getPlayerPos(now);
+      const finishMs = session.getFinishMs(now);
+      const body = finishMs == null ? null : goalBody(playerRadius, cell, finishMs);
+      drawPlayer(ctx, (pos.c + 0.5) * cell, (pos.r + 0.5) * cell, playerRadius, session.dir, session.getDeform(now), body);
+    }
 
     effects.render(ctx, (x, y) => [x, y], { w: width, h: height });
     ctx.restore();
@@ -155,41 +157,65 @@ function drawSnow(ctx, x, y, s) {
   }
 }
 
-// Loch im Eis: helle Bruchkante mit feinen Rissen, darin eine dunkle runde Grube - rund und
-// vertieft, damit man es nie mit einem (eckigen, erhabenen) Felsen verwechselt
-function drawHole(ctx, x, y, s, seed) {
+// ---------- Loch ----------
+// Rundes schwarzes Loch mit hellem Rand. Oben schimmert eine schmale Sichel Innenwand durch, so
+// wirkt es tief - und rund und vertieft verwechselt man es nie mit einem (eckigen) Felsen.
+const HOLE_R = 0.36; // Radius in Feldgrößen
+const HOLE_RIM = "#e6ddcd";
+const HOLE_WALL = "#3d332d";
+const HOLE_DEEP = "#120e0c";
+
+function drawHole(ctx, x, y, s) {
   const cx = x + s / 2, cy = y + s / 2;
-  const r = s * 0.34;
-  ctx.save();
-  ctx.strokeStyle = SNOW_DOT;
-  ctx.lineWidth = Math.max(1, s * 0.03);
-  ctx.lineCap = "round";
-  for (let i = 0; i < 4; i++) {
-    const a = seed * 0.9 + i * (Math.PI / 2) + (i % 2) * 0.5;
-    const len = s * (0.08 + ((seed + i * 3) % 4) * 0.025);
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * r * 1.08, cy + Math.sin(a) * r * 1.08);
-    ctx.lineTo(cx + Math.cos(a + 0.15) * (r * 1.08 + len), cy + Math.sin(a + 0.15) * (r * 1.08 + len));
-    ctx.stroke();
-  }
+  const r = s * HOLE_R;
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
-  ctx.fillStyle = "#e6ddcd";
+  ctx.arc(cx, cy, r * 1.16, 0, Math.PI * 2);
+  ctx.fillStyle = HOLE_RIM;
   ctx.fill();
-  const g = ctx.createRadialGradient(cx, cy + r * 0.3, r * 0.1, cx, cy, r);
-  g.addColorStop(0, "#120e0c");
-  g.addColorStop(1, "#3a302a");
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = g;
+  ctx.fillStyle = HOLE_WALL;
   ctx.fill();
-  // Innenkante oben im Schatten -> wirkt wie eine Vertiefung
+  ctx.save();
+  ctx.clip();
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.86, Math.PI * 1.1, Math.PI * 1.9);
-  ctx.strokeStyle = "rgba(0,0,0,0.45)";
-  ctx.lineWidth = Math.max(1.5, s * 0.05);
-  ctx.stroke();
+  ctx.arc(cx, cy + r * 0.2, r, 0, Math.PI * 2);
+  ctx.fillStyle = HOLE_DEEP;
+  ctx.fill();
   ctx.restore();
+}
+
+// Reinfallen: Die Figur kippt in die Tiefe - wird kleiner, sackt ab, verschwindet hinter dem
+// vorderen Rand und wird dabei dunkel. Kurz danach läuft ein blasser Ring vom Rand weg.
+//   ms = Zeit seit dem Reinfallen (das Versinken dauert SL.FALL_MS)
+function drawHoleFall(ctx, at, s, ms, radius, dir) {
+  const cx = (at.c + 0.5) * s, cy = (at.r + 0.5) * s;
+  const r = s * HOLE_R;
+  const t = Math.min(1, ms / SL.FALL_MS);
+  if (t < 1) {
+    const e = t * t;
+    const rad = radius * (1 - 0.55 * e);
+    const py = cy + r * 0.55 * e;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    drawPlayer(ctx, cx, py, rad, dir, null);
+    ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.25) / 0.6));
+    ctx.beginPath();
+    ctx.arc(cx, py, rad * 1.05, 0, Math.PI * 2);
+    ctx.fillStyle = HOLE_DEEP;
+    ctx.fill();
+    ctx.restore();
+  }
+  const ring = (ms - SL.FALL_MS * 0.6) / 420;
+  if (ring > 0 && ring < 1) {
+    ctx.strokeStyle = `rgba(43,36,32,${0.3 * (1 - ring)})`;
+    ctx.lineWidth = Math.max(1, s * 0.04 * (1 - ring));
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * (1.2 + ring * 0.45), 0, Math.PI * 2);
+    ctx.stroke();
+  }
 }
 
 // Neue Feldart pulsiert: Rahmen, der um jedes dieser Felder atmet (bei Löchern rund)
@@ -204,7 +230,7 @@ function drawHighlight(ctx, board, tile, s, now) {
       if (board.grid[r][c] !== tile) continue;
       if (tile === SL.HOLE) {
         ctx.beginPath();
-        ctx.arc((c + 0.5) * s, (r + 0.5) * s, s * 0.42 + grow, 0, Math.PI * 2);
+        ctx.arc((c + 0.5) * s, (r + 0.5) * s, s * 0.46 + grow, 0, Math.PI * 2);
       } else {
         roundRectPath(ctx, c * s + s * 0.07 - grow, r * s + s * 0.07 - grow, s * 0.86 + grow * 2, s * 0.86 + grow * 2, s * 0.2 + grow);
       }
@@ -228,13 +254,16 @@ function drawRock(ctx, x, y, s, scale) {
 }
 
 // Ziel: Quadrat-Rahmen wie bei Maze, dazu ein Puls nach außen. Kurz getönt, wenn man nur
-// drübergerutscht ist ("knapp vorbei"). Im Ziel bleibt nur der Rahmen - die Figur soll drauf
-// sichtbar bleiben, das Konfetti macht die UI.
+// drübergerutscht ist ("knapp vorbei"). Bleibt man liegen, wird die Figur zum Quadrat und füllt
+// den Rahmen aus (goalBody), das Konfetti macht die UI.
+const GOAL_HALF = 0.3; // halbe Seitenlänge des Rahmens in Feldgrößen (Mitte der Linie)
+const goalLineWidth = (s) => Math.max(2, s * 0.085);
+
 function drawGoal(ctx, goal, s, now, scale, flashAt, finished) {
   if (scale <= 0) return;
   const cx = (goal.c + 0.5) * s, cy = (goal.r + 0.5) * s;
-  const gs = s * 0.3 * scale;
-  const lw = Math.max(2, s * 0.085);
+  const gs = s * GOAL_HALF * scale;
+  const lw = goalLineWidth(s);
   ctx.save();
   if (!finished) {
     const t = (now % 1700) / 1700;
@@ -254,53 +283,40 @@ function drawGoal(ctx, goal, s, now, scale, flashAt, finished) {
   ctx.restore();
 }
 
-// Kufenspuren: zwei feine Linien entlang des Rutschers, die nach der Landung ausblenden.
+// Schweif hinter der Figur: zieht beim Rutschen weich hinterher - vorne fast so breit wie die
+// Figur, hinten spitz und durchsichtig - und schnurrt nach dem Stopp in die Figur zurück. Nie
+// länger als der bisher gerutschte Weg, also nie über dem Feld, von dem sie losgerutscht ist.
 // marks: [{ from, to, dir, start, duration, cutAt? }] - cutAt = Rutscher wurde mittendrin
-// zurückgenommen, die Spur wächst dann nicht weiter
-function drawMarks(ctx, marks, s, now) {
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.strokeStyle = SKATE_MARK;
-  ctx.lineWidth = Math.max(1, s * 0.035);
+// zurückgenommen, der Schweif zieht sich dann dort zusammen
+const TRAIL_MAX = 2.4; // höchstens so viele Felder lang
+const TRAIL_RETRACT_MS = 200;
+function drawTrails(ctx, marks, s, now, radius) {
   for (const m of marks) {
     const end = m.cutAt != null ? m.cutAt : m.start + m.duration;
-    const alpha = now <= end ? 1 : Math.max(0, 1 - (now - end) / MARK_FADE_MS);
-    if (alpha <= 0) continue;
     const t = Math.min(1, Math.max(0, (Math.min(now, end) - m.start) / m.duration));
-    const p = SL.slideEase(t);
-    const x0 = (m.from.c + 0.5) * s, y0 = (m.from.r + 0.5) * s;
-    const x1 = x0 + (m.to.c - m.from.c) * s * p, y1 = y0 + (m.to.r - m.from.r) * s * p;
+    const tiles = Math.abs(m.to.r - m.from.r) + Math.abs(m.to.c - m.from.c);
+    const head = SL.slideEase(t) * tiles; // so weit ist die Figur schon (in Feldern)
+    let len = Math.min(head, TRAIL_MAX);
+    if (now > end) len *= Math.max(0, 1 - (now - end) / TRAIL_RETRACT_MS);
+    if (len < 0.05 || radius <= 0) continue;
     const d = SL.DIRS[m.dir];
-    const ox = -d.dr * s * 0.11, oy = d.dc * s * 0.11; // quer zur Fahrtrichtung
-    ctx.globalAlpha = alpha;
+    const hx = (m.from.c + 0.5 + d.dc * head) * s, hy = (m.from.r + 0.5 + d.dr * head) * s;
+    const tx = hx - d.dc * len * s, ty = hy - d.dr * len * s;
+    const w = radius * 0.85; // halbe Breite vorne - die Ränder verschwinden hinter der Figur
+    const nx = -d.dr * w, ny = d.dc * w; // quer zur Fahrtrichtung
+    // Kontrollpunkte kurz hinter der Figur: der Schweif bleibt lange breit und läuft dann spitz aus
+    const bx = hx - d.dc * len * s * 0.45, by = hy - d.dr * len * s * 0.45;
+    const g = ctx.createLinearGradient(tx, ty, hx, hy);
+    g.addColorStop(0, "rgba(43,36,32,0)");
+    g.addColorStop(1, "rgba(43,36,32,0.2)");
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(x0 + ox, y0 + oy);
-    ctx.lineTo(x1 + ox, y1 + oy);
-    ctx.moveTo(x0 - ox, y0 - oy);
-    ctx.lineTo(x1 - ox, y1 - oy);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-// Bewegungs-Schatten: ein paar blasse Kopien der Figur hinter ihr, nie weiter zurück als bis zum
-// Startfeld (sonst lägen sie über dem Fels, von dem sie gerade wegrutscht)
-function drawMotionGhosts(ctx, anim, pos, s, radius, now) {
-  const t = Math.min(1, Math.max(0, (now - anim.start) / anim.duration));
-  const traveled = SL.slideEase(t) * anim.path.length;
-  const d = SL.DIRS[anim.dir];
-  const fade = t > 0.85 ? (1 - t) / 0.15 : 1;
-  ctx.save();
-  for (let k = 1; k <= 3; k++) {
-    const back = Math.min(traveled, k * 0.3);
-    if (back <= 0.02) break;
-    ctx.globalAlpha = (0.16 / k) * fade;
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.arc((pos.c + 0.5 - d.dc * back) * s, (pos.r + 0.5 - d.dr * back) * s, radius * (1 - k * 0.12), 0, Math.PI * 2);
+    ctx.moveTo(tx, ty);
+    ctx.quadraticCurveTo(bx + nx, by + ny, hx + nx, hy + ny);
+    ctx.lineTo(hx - nx, hy - ny);
+    ctx.quadraticCurveTo(bx - nx, by - ny, tx, ty);
     ctx.fill();
   }
-  ctx.restore();
 }
 
 // Tutorial-Pfeil: Pfeilspitzen wandern vom Spieler bis zum Haltepunkt, dort ein Zielring (außer
@@ -364,10 +380,44 @@ function drawEdgeHit(ctx, hit, w, h, now) {
 
 // ---------- Figur ----------
 
+// Ziel-Verwandlung wie in Maze: Im Ziel wächst die Figur vom Kreis zum Quadrat, bis sie den
+// Rahmen komplett ausfüllt - mit einem kleinen Überschwinger am Ende. Die Augen bleiben.
+const GOAL_MORPH_MS = 360;
+function goalMorph(ms) {
+  const t = Math.min(1, Math.max(0, ms / GOAL_MORPH_MS));
+  const c1 = 1.4, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+// Körperform im Ziel: { half, corner } - halbe Seitenlänge und Eckenradius (corner = half ist
+// ein Kreis). Am Ende so groß wie der Rahmen außen; die runden Ecken ragen ein Stück darüber,
+// damit keine Rahmenspitze hervorschaut.
+function goalBody(radius, s, ms) {
+  const m = goalMorph(ms);
+  const corner = s * 0.05;
+  const half = s * GOAL_HALF + goalLineWidth(s) / 2 + corner * 0.3;
+  return {
+    half: radius + (half - radius) * m,
+    corner: radius + (corner - radius) * Math.min(1, m),
+  };
+}
+
+// Quadrat mit runden Ecken um (x, y); corner >= half ergibt einen Kreis
+function bodyPath(ctx, x, y, half, corner) {
+  const k = Math.max(0, Math.min(corner, half));
+  ctx.beginPath();
+  ctx.moveTo(x, y - half);
+  ctx.arcTo(x + half, y - half, x + half, y + half, k);
+  ctx.arcTo(x + half, y + half, x - half, y + half, k);
+  ctx.arcTo(x - half, y + half, x - half, y - half, k);
+  ctx.arcTo(x - half, y - half, x + half, y - half, k);
+  ctx.closePath();
+}
+
 // deform: { dir, along } - along > 0 streckt in Fahrtrichtung, < 0 staucht (Aufprall). Beim
 // Stauchen rückt die Mitte zur Wand, damit die Figur an der Wand plattgedrückt wird statt von ihr
-// wegzuschrumpfen.
-function drawPlayer(ctx, x, y, radius, dir, deform) {
+// wegzuschrumpfen. body: Form im Ziel (goalBody), sonst Kreis.
+function drawPlayer(ctx, x, y, radius, dir, deform, body = null) {
   if (radius <= 0.5) return;
   ctx.save();
   if (deform && deform.along) {
@@ -380,8 +430,11 @@ function drawPlayer(ctx, x, y, radius, dir, deform) {
     ctx.scale(horizontal ? a : q, horizontal ? q : a);
     ctx.translate(-x, -y);
   }
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  if (body) bodyPath(ctx, x, y, body.half, body.corner);
+  else {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+  }
   ctx.fillStyle = INK;
   ctx.fill();
   drawFace(ctx, x, y, dir, radius);

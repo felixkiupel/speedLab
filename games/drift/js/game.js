@@ -43,6 +43,7 @@ SL.GameSession = function GameSession(level, puzzle) {
   this.stuck = false; // steht in einer Sackgasse (Ziel von hier aus unerreichbar)
   this.started = false;
   this.finished = false;
+  this.finishedAt = null; // wann die Figur im Ziel liegen geblieben ist (für die Verwandlung)
   this.fall = null; // ins Loch gefallen { start } - der Lauf ist dann vorbei
   this.pausedAt = null;
   // Stoppuhr wie bei Maze über performance.now(): elapsedMs = abgeschlossene Abschnitte,
@@ -195,6 +196,7 @@ Session._land = function _land(at) {
   if (this.isGoal(a.to)) {
     this.queue = [];
     this.finished = true;
+    this.finishedAt = at;
     if (this.runningSince != null) {
       this.elapsedMs += Math.max(0, at - this.runningSince);
       this.runningSince = null;
@@ -273,16 +275,24 @@ Session.getPlayerPos = function getPlayerPos(now) {
   return { r: this.pos.r, c: this.pos.c };
 };
 
-// Fortschritt des Reinfallens (0..1), null = nicht gefallen
-Session.getFallProgress = function getFallProgress(now) {
+// Zeit seit dem Reinfallen in ms (das Versinken dauert SL.FALL_MS, die Wellen laufen danach
+// noch weiter), null = nicht gefallen
+Session.getFallMs = function getFallMs(now) {
   if (!this.fall) return null;
-  return Math.min(1, Math.max(0, (now - this.fall.start) / FALL_MS));
+  return Math.max(0, now - this.fall.start);
+};
+
+// Zeit seit dem Liegenbleiben im Ziel in ms, null = noch nicht im Ziel
+Session.getFinishMs = function getFinishMs(now) {
+  if (this.finishedAt == null) return null;
+  return Math.max(0, now - this.finishedAt);
 };
 
 // Verformung der Figur: beim Rutschen in Fahrtrichtung gestreckt, beim Aufprall gestaucht und
 // kurz nachfedernd. Liefert { dir, along } - along > 0 streckt, < 0 staucht entlang der Richtung.
+// Im Ziel keine, da wird die Figur zum Quadrat (siehe Renderer).
 Session.getDeform = function getDeform(now) {
-  if (this.fall) return null;
+  if (this.fall || this.finished) return null;
   if (this.anim) {
     const a = this.anim;
     const t = Math.min(1, Math.max(0, (now - a.start) / a.duration));

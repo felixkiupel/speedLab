@@ -2,9 +2,9 @@
 // Node-Tools (tools/level-gen.js), die damit die Level erzeugen und prüfen.
 //
 // Regeln: Ein Zug rutscht so lange in eine Richtung, bis ein Fels oder der Spielfeldrand im Weg
-// ist. Schnee bremst sofort - man bleibt auf dem Schneefeld stehen. Ein Loch verschluckt einen,
-// der Lauf ist dann vorbei. Das Ziel bremst NICHT: man muss genau darauf liegen bleiben,
-// drüberrutschen zählt nicht.
+// ist. Schnee bremst sofort - man bleibt auf dem Schneefeld stehen. Wer über ein Loch rutscht,
+// fällt hinein, der Lauf ist dann vorbei. Das Ziel bremst NICHT: man muss genau darauf liegen
+// bleiben, drüberrutschen zählt nicht.
 window.SL = window.SL || {};
 
 SL.ICE = 0;
@@ -208,58 +208,4 @@ SL.fastestTime = function fastestTime(graph, startKey, goalKey, allowMs) {
       if (!best.has(e.to) || cost < best.get(e.to)) best.set(e.to, cost);
     }
   }
-};
-
-// ---------- Generator ----------
-// Zufällige Karte: Felsen mit Wahrscheinlichkeit "rockRate", dazu "snow" Schneefelder und "holes"
-// Löcher. Start zufällig, Ziel = ein Haltepunkt auf Eis genau "goalDist" Züge entfernt (ohne
-// goalDist: einer der am weitesten entfernten). Liefert null, wenn die Karte nichts taugt. Die
-// Auswahl der guten Karten macht tools/level-gen.js.
-SL.generateBoard = function generateBoard({ rows, cols, rockRate, snow = 0, holes = 0, goalDist = null, seed }) {
-  const rand = SL.createRng(seed);
-  const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => (rand() < rockRate ? SL.ROCK : SL.ICE)));
-  const free = [];
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (grid[r][c] === SL.ICE) free.push({ r, c });
-  if (free.length < 6 + snow + holes) return null;
-  for (let i = free.length - 1; i > 0; i--) {
-    const j = SL.randInt(rand, i + 1);
-    [free[i], free[j]] = [free[j], free[i]];
-  }
-  const start = free.pop();
-  for (let i = 0; i < snow; i++) {
-    const p = free.pop();
-    grid[p.r][p.c] = SL.SNOW;
-  }
-  for (let i = 0; i < holes; i++) {
-    const p = free.pop();
-    grid[p.r][p.c] = SL.HOLE;
-  }
-  const board = { rows, cols, grid, start, goal: start, coins: [] };
-
-  // Haltepunkte auf Eis nach Entfernung (BFS über die Züge)
-  const graph = SL.buildGraph(board);
-  const dist = new Map([[start.r * cols + start.c, 0]]);
-  const queue = [start.r * cols + start.c];
-  for (let head = 0; head < queue.length; head++) {
-    for (const e of graph.get(queue[head])) {
-      if (!dist.has(e.to)) {
-        dist.set(e.to, dist.get(queue[head]) + 1);
-        queue.push(e.to);
-      }
-    }
-  }
-  let far = [];
-  let farDist = 0;
-  const exact = [];
-  for (const [k, d] of dist) {
-    const r = Math.floor(k / cols), c = k % cols;
-    if (grid[r][c] !== SL.ICE) continue;
-    if (d === goalDist) exact.push({ r, c });
-    if (d > farDist) { far = [{ r, c }]; farDist = d; }
-    else if (d === farDist) far.push({ r, c });
-  }
-  const pool = goalDist != null ? exact : far;
-  if (!pool.length || (goalDist == null && farDist < 2)) return null;
-  board.goal = pool[SL.randInt(rand, pool.length)];
-  return board;
 };
