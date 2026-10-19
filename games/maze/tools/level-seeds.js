@@ -13,7 +13,8 @@ const levelsFile = path.join(root, "js", "levels.js");
 const TRIES = 80;
 
 globalThis.window = globalThis;
-for (const f of ["rng", "maze", "levels", "economy"]) {
+eval(fs.readFileSync(path.join(root, "..", "..", "shared", "js", "rng.js"), "utf8"));
+for (const f of ["maze", "levels", "economy"]) {
   eval(fs.readFileSync(path.join(root, "js", f + ".js"), "utf8"));
 }
 

@@ -1,15 +1,26 @@
-// Einstellungen: Töne (+ Lautstärke), Vibration, Effekte, Tipp-Steuerung. Als Overlay über dem
-// aktuellen Screen, damit es auch aus der Pause heraus geht, ohne den Lauf zu verlieren.
+// Einstellungen - gemeinsam für alle Spiele. Das Fenster (#settings-overlay) steht im HTML jedes
+// Spiels und sieht überall gleich aus (Styles: shared/css/game.css): Töne, Lautstärke, Vibration,
+// Effekte, dazu je Spiel evtl. eine eigene Zeile. Dieses Skript kennt die einzelnen Zeilen nicht,
+// es liest sie aus dem HTML:
+//   <button class="toggle" data-setting="name">        an/aus  -> settings[name] = true/false
+//   <div class="segmented" data-setting="name"> <button data-value="x">   -> settings[name] = "x"
+//   #setting-volume                                     Lautstärke 0..1 (Probeton beim Loslassen)
+//   #btn-reset-save                                     Fortschritt löschen; Beschriftung steht im
+//                                                       HTML, die Rückfrage in data-confirm
+// Als Overlay über dem aktuellen Screen, damit es auch aus der Pause heraus geht, ohne den Lauf zu
+// verlieren. Gespeichert wird im Spielstand des Spiels (SL.Storage), nicht im Profil.
 window.SL = window.SL || {};
 
 SL.Settings = (function () {
   let state = null;
   let onChange = () => {};
   let resetArmedUntil = 0;
+  let resetLabel = "";
 
   const overlay = () => document.getElementById("settings-overlay");
+  const resetBtn = () => document.getElementById("btn-reset-save");
 
-  // Werte an Audio/Haptik/Effekte durchreichen und der UI Bescheid geben (z.B. Tipp-Steuerung)
+  // Werte an Audio/Haptik durchreichen und dem Spiel Bescheid geben (Effekte, eigene Zeilen)
   function apply() {
     const s = state.settings;
     SL.Audio.setEnabled(s.sound);
@@ -57,25 +68,23 @@ SL.Settings = (function () {
     return !overlay().classList.contains("hidden");
   }
 
-  // Fortschritt löschen braucht einen zweiten Klick innerhalb von 4 s. Gelöscht wird nur Maze
-  // (Level, Skins, Bestzeiten) - Coins und Serie gehören dem spielübergreifenden Profil.
-  const RESET_LABEL = "Maze-Fortschritt löschen";
+  // Fortschritt löschen braucht einen zweiten Klick innerhalb von 4 s. Gelöscht wird nur der
+  // Spielstand dieses Spiels - Coins und Serie gehören dem spielübergreifenden Profil.
   function disarmReset() {
     resetArmedUntil = 0;
-    const btn = document.getElementById("btn-reset-save");
-    btn.textContent = RESET_LABEL;
-    btn.classList.remove("armed");
+    resetBtn().textContent = resetLabel;
+    resetBtn().classList.remove("armed");
   }
 
   function onResetClick() {
-    const btn = document.getElementById("btn-reset-save");
+    const btn = resetBtn();
     if (Date.now() < resetArmedUntil) {
       SL.Storage.reset();
       location.reload();
       return;
     }
     resetArmedUntil = Date.now() + 4000;
-    btn.textContent = "Level & Skins wirklich löschen?";
+    btn.textContent = btn.dataset.confirm;
     btn.classList.add("armed");
     setTimeout(() => { if (Date.now() >= resetArmedUntil) disarmReset(); }, 4100);
   }
@@ -84,6 +93,7 @@ SL.Settings = (function () {
     state = saveState;
     onChange = changeHandler;
     const root = overlay();
+    resetLabel = resetBtn().textContent;
 
     root.querySelectorAll(".toggle[data-setting]").forEach((el) => {
       el.addEventListener("click", () => set(el.dataset.setting, !state.settings[el.dataset.setting]));
@@ -103,7 +113,7 @@ SL.Settings = (function () {
       SL.Audio.play("coin");
     });
     document.getElementById("btn-settings-close").addEventListener("click", close);
-    document.getElementById("btn-reset-save").addEventListener("click", onResetClick);
+    resetBtn().addEventListener("click", onResetClick);
     // Klick auf den abgedunkelten Hintergrund schließt ebenfalls
     root.addEventListener("click", (e) => { if (e.target === root) close(); });
 

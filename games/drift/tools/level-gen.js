@@ -29,7 +29,8 @@ const MAX_TRIES = 6000;
 const CLIMB_STEPS = 400;
 
 globalThis.window = globalThis;
-for (const f of ["rng", "puzzle", "levels"]) {
+eval(fs.readFileSync(path.join(root, "..", "..", "shared", "js", "rng.js"), "utf8"));
+for (const f of ["puzzle", "levels"]) {
   eval(fs.readFileSync(path.join(root, "js", f + ".js"), "utf8"));
 }
 

@@ -1,4 +1,7 @@
-// Soundeffekte, komplett per Web Audio erzeugt (keine Audiodateien), plus Vibration.
+// Soundeffekte, komplett per Web Audio erzeugt (keine Audiodateien), plus Vibration - gemeinsam für
+// alle Spiele. Hier liegt die Engine und die Töne, die jedes Spiel gleich verwendet (Klick, Coin,
+// Sterne, Ziel ...). Spiel-eigene Geräusche meldet jedes Spiel in seiner js/sounds.js mit
+// SL.Audio.add({ name() { ... } }) an und baut sie aus SL.Audio.tone / SL.Audio.noise.
 // Der AudioContext darf erst nach einer Nutzer-Geste starten -> ensure() hängt am ersten
 // Tastendruck/Tippen (ui.js). Alles ist über die Einstellungen abschaltbar.
 window.SL = window.SL || {};
@@ -46,30 +49,34 @@ SL.Audio = (function () {
     osc.stop(t0 + duration + 0.02);
   }
 
-  // Gefiltertes Rauschen für "Aufprall"-Geräusche
-  function noise({ duration = 0.2, gain = 0.3, cutoff = 900, delay = 0 }) {
+  // Gefiltertes Rauschen: "lowpass" für Aufprall-Geräusche, "bandpass" mit Sweep z.B. fürs Rutschen
+  function noise({ duration = 0.2, gain = 0.3, filter = "lowpass", cutoff = 900, cutoffEnd, q = 1, attack = 0, delay = 0 }) {
     const t0 = ctx.currentTime + delay;
     const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = cutoff;
+    const f = ctx.createBiquadFilter();
+    f.type = filter;
+    f.Q.value = q;
+    f.frequency.setValueAtTime(cutoff, t0);
+    if (cutoffEnd) f.frequency.exponentialRampToValueAtTime(cutoffEnd, t0 + duration);
     const env = ctx.createGain();
-    env.gain.setValueAtTime(gain, t0);
+    if (attack) {
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(gain, t0 + attack);
+    } else {
+      env.gain.setValueAtTime(gain, t0);
+    }
     env.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-    src.connect(filter).connect(env).connect(master);
+    src.connect(f).connect(env).connect(master);
     src.start(t0);
   }
 
+  // Töne, die in allen Spielen gleich klingen. Die Spiele ergänzen ihre eigenen über add().
   const SOUNDS = {
-    // Schritt: kurzer Klick, wird bei schnellen Serien leicht höher (combo = Schritte in Folge)
-    step(combo = 0) {
-      const lift = Math.min(combo, 16) / 48;
-      tone({ freq: 520 * Math.pow(2, lift), type: "triangle", duration: 0.045, gain: 0.12 });
-    },
+    // Kurz gegen etwas gestoßen (ohne Folgen)
     bump() {
       tone({ freq: 160, freqEnd: 120, type: "sine", duration: 0.07, gain: 0.18 });
     },
@@ -77,9 +84,15 @@ SL.Audio = (function () {
       tone({ freq: 988, type: "square", duration: 0.06, gain: 0.07 });
       tone({ freq: 1319, type: "square", duration: 0.1, gain: 0.07, delay: 0.055 });
     },
+    // Harter Aufprall (Wand)
     crash() {
       noise({ duration: 0.22, gain: 0.35, cutoff: 700 });
       tone({ freq: 190, freqEnd: 55, type: "sine", duration: 0.28, gain: 0.35 });
+    },
+    // Runterfallen (Loch, verpasster Sprung): Ton rutscht nach unten weg
+    fall() {
+      tone({ freq: 620, freqEnd: 110, type: "triangle", duration: 0.42, gain: 0.16 });
+      noise({ duration: 0.3, gain: 0.08, cutoff: 900, cutoffEnd: 200, delay: 0.05 });
     },
     checkpoint() {
       [660, 880, 1175].forEach((f, i) => tone({ freq: f, type: "triangle", duration: 0.12, gain: 0.16, delay: i * 0.07 }));
@@ -97,9 +110,6 @@ SL.Audio = (function () {
     starLost() {
       tone({ freq: 440, freqEnd: 300, type: "triangle", duration: 0.16, gain: 0.1 });
     },
-    purchase() {
-      [784, 1047, 1319, 1568].forEach((f, i) => tone({ freq: f, type: "triangle", duration: 0.1, gain: 0.13, delay: i * 0.05 }));
-    },
     unlock() {
       [880, 1109, 1319].forEach((f, i) => tone({ freq: f, type: "sine", duration: 0.2, gain: 0.12, delay: i * 0.09 }));
     },
@@ -114,9 +124,17 @@ SL.Audio = (function () {
     if (sound) sound(arg);
   }
 
+  // Spiel-eigene Töne anmelden: { name(arg) { tone(...); noise(...); } }
+  function add(sounds) {
+    Object.assign(SOUNDS, sounds);
+  }
+
   return {
     ensure,
     play,
+    add,
+    tone,
+    noise,
     setEnabled(value) {
       enabled = value;
       applyVolume();

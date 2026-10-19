@@ -1,4 +1,5 @@
-// Seeded PRNG (mulberry32) - gleicher Seed => gleiche Zahlenfolge => reproduzierbare Mazes
+// Seeded PRNG (mulberry32) - gleicher Seed => gleiche Zahlenfolge => reproduzierbare Level.
+// Gemeinsam für alle Spiele (Maze-Labyrinthe, Drift-Karten, Leap-Strecken).
 window.SL = window.SL || {};
 
 SL.createRng = function createRng(seed) {

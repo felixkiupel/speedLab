@@ -28,7 +28,22 @@
     const best = SL.Profile.bestStreak();
     const doneToday = SL.Profile.dailiesOn(today);
 
-    document.getElementById("streak-card").classList.toggle("empty", !streak);
+    const card = document.getElementById("streak-card");
+    card.classList.toggle("empty", !streak);
+    // Serie läuft, heute aber noch kein Daily: Flamme glimmt nur noch (hub.css)
+    card.classList.toggle("at-risk", streak > 0 && !doneToday.length);
+    // Die Form-Wechsel der Flamme (<animate> im SVG) laufen nur, wenn sie wirklich brennt und
+    // Bewegung erwünscht ist - CSS kann SVG-Animationen nicht anhalten
+    const flame = card.querySelector(".streak-flame svg");
+    const still = !streak || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (flame.pauseAnimations) {
+      if (still) {
+        flame.pauseAnimations();
+        flame.setCurrentTime(0);
+      } else {
+        flame.unpauseAnimations();
+      }
+    }
 
     const countEl = document.getElementById("streak-count");
     countEl.textContent = streak || "";

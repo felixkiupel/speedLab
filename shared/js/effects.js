@@ -1,5 +1,6 @@
-// Partikel, schwebender Text und Bildschirm-Wackeln fürs Spielfeld. Positionen in Welt-Pixeln
-// (wie das Maze), damit Effekte mit der Kamera mitwandern. "enabled" = Einstellung "Effekte";
+// Partikel, schwebender Text und Bildschirm-Wackeln fürs Spielfeld - gemeinsam für alle Spiele.
+// Positionen in Welt-Pixeln des jeweiligen Spiels; beim Zeichnen rechnet toScreen() sie auf den
+// Bildschirm um, damit Effekte mit einer Kamera mitwandern. "enabled" = Einstellung "Effekte";
 // schwebender Text (z.B. "Checkpoint!") bleibt auch ohne Effekte, weil er Information ist.
 window.SL = window.SL || {};
 
@@ -83,7 +84,8 @@ SL.Effects.prototype.getShakeOffset = function getShakeOffset() {
   return { x: (Math.random() * 2 - 1) * k, y: (Math.random() * 2 - 1) * k };
 };
 
-SL.Effects.prototype.render = function render(ctx, toScreen) {
+// bounds { w, h } (optional): schwebender Text bleibt komplett im Spielfeld (am Rand sonst abgeschnitten)
+SL.Effects.prototype.render = function render(ctx, toScreen, bounds) {
   for (const p of this.particles) {
     const [x, y] = toScreen(p.x, p.y);
     ctx.globalAlpha = Math.min(1, (p.life / p.maxLife) * 1.5);
@@ -109,9 +111,13 @@ SL.Effects.prototype.render = function render(ctx, toScreen) {
   ctx.textBaseline = "middle";
   ctx.font = '700 14px "Segoe UI", system-ui, sans-serif';
   for (const t of this.texts) {
-    const [x, y] = toScreen(t.x, t.y);
+    let [x, y] = toScreen(t.x, t.y);
     ctx.globalAlpha = Math.min(1, (t.life / t.maxLife) * 2);
     const w = ctx.measureText(t.label).width + 16;
+    if (bounds) {
+      x = Math.max(w / 2 + 4, Math.min(bounds.w - w / 2 - 4, x));
+      y = Math.max(16, Math.min(bounds.h - 16, y));
+    }
     ctx.fillStyle = "#2b2420";
     ctx.beginPath();
     ctx.roundRect ? ctx.roundRect(x - w / 2, y - 12, w, 24, 12) : ctx.rect(x - w / 2, y - 12, w, 24);

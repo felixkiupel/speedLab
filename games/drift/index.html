@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#fbf7f0">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../shared/css/base.css">
+<link rel="stylesheet" href="../../shared/css/game.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -71,7 +72,7 @@
         <span id="hud-level" class="hud-pill">Level 1</span>
       </div>
       <div class="hud-center">
-        <span id="hud-timer">0.00s</span>
+        <span id="hud-timer" class="hud-value">0.00s</span>
         <div id="hud-stars" class="hud-stars" aria-label="Erreichbare Sterne"></div>
       </div>
       <div class="hud-right">
@@ -191,7 +192,7 @@
         </div>
       </div>
       <button id="btn-settings-close" class="btn btn-primary">Fertig</button>
-      <button id="btn-reset-save" class="btn btn-ghost btn-danger">Drift-Fortschritt löschen</button>
+      <button id="btn-reset-save" class="btn btn-ghost btn-danger" data-confirm="Level & Bestzeiten wirklich löschen?">Drift-Fortschritt löschen</button>
     </div>
   </div>
 
@@ -199,20 +200,22 @@
 
 </div>
 
-<!-- Spielübergreifend: Links, Tage + Profil (Coins, Daily-Serie) -->
+<!-- Spielübergreifend: Links, Tage + Profil (Coins, Daily-Serie), dazu die Bausteine, die alle
+     Spiele gleich nutzen (Zufall, Töne, Effekte, Einstellungen) -->
 <script src="../../shared/js/links.js"></script>
 <script src="../../shared/js/days.js"></script>
 <script src="../../shared/js/profile.js"></script>
-<script src="js/rng.js"></script>
+<script src="../../shared/js/rng.js"></script>
+<script src="../../shared/js/audio.js"></script>
+<script src="../../shared/js/effects.js"></script>
+<script src="../../shared/js/settings.js"></script>
 <script src="js/puzzle.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/levels.js"></script>
 <script src="js/storage.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/effects.js"></script>
+<script src="js/sounds.js"></script>
 <script src="js/renderer.js"></script>
 <script src="js/game.js"></script>
-<script src="js/settings.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>

@@ -133,14 +133,81 @@
   width: 42px;
   height: 52px;
 }
+/* Die Flamme darf über ihren Kasten hinaus lodern (Spitzen, Funken) */
 .streak-flame svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  overflow: visible;
   fill: var(--bg);
-  transform-origin: 50% 100%;
-  animation: flame-flicker 2.6s ease-in-out infinite;
+}
+/* Schichten von hinten nach vorn: Glühen, Schein, Mitte, abreißende Zungen, Kern (mit der Zahl),
+   Funken. Die Form-Wechsel laufen per <animate> im SVG (index.html), hier nur Deckkraft und
+   Bewegung. Koordinaten in Einheiten der viewBox (32 × 40, Boden der Flamme bei y = 39). */
+.flame-glow { transform-box: fill-box; transform-origin: center; animation: flame-glow 2.2s ease-in-out infinite; }
+.flame-outer { opacity: 0.2; }
+.flame-mid { opacity: 0.38; }
+.flame-mid,
+.flame-core { transform-origin: 16px 39px; transition: transform 0.4s ease, opacity 0.4s ease; }
+@keyframes flame-glow {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  40% { opacity: 1; transform: scale(1.06); }
+  70% { opacity: 0.85; transform: scale(0.97); }
+}
+
+/* Zungen, die sich oben ablösen: steigen auf, werden kleiner und verblassen */
+.flame-lick { opacity: 0; animation: flame-lick 1.3s ease-out infinite; }
+.lick-b { animation: flame-lick-b 1.7s ease-out 0.65s infinite; }
+@keyframes flame-lick {
+  0% { opacity: 0; transform: translate(16px, 6px) scale(1); }
+  12% { opacity: 0.55; }
+  100% { opacity: 0; transform: translate(13.5px, -11px) scale(0.25); }
+}
+@keyframes flame-lick-b {
+  0% { opacity: 0; transform: translate(17px, 5px) scale(0.9); }
+  15% { opacity: 0.45; }
+  100% { opacity: 0; transform: translate(20px, -10px) scale(0.2); }
+}
+
+/* Funken: steigen in leichtem Bogen auf und verglühen */
+.flame-spark { opacity: 0; animation: flame-spark-a 1.9s ease-out infinite; }
+.spark-b { animation: flame-spark-b 2.4s ease-out 0.8s infinite; }
+.spark-c { animation: flame-spark-c 2.1s ease-out 1.5s infinite; }
+@keyframes flame-spark-a {
+  0% { opacity: 0; transform: translate(14px, 8px); }
+  10% { opacity: 1; }
+  60% { transform: translate(10.5px, -5px); }
+  100% { opacity: 0; transform: translate(12px, -12px); }
+}
+@keyframes flame-spark-b {
+  0% { opacity: 0; transform: translate(19px, 10px); }
+  10% { opacity: 0.9; }
+  55% { transform: translate(22px, -3px); }
+  100% { opacity: 0; transform: translate(20.5px, -11px); }
+}
+@keyframes flame-spark-c {
+  0% { opacity: 0; transform: translate(16px, 4px); }
+  12% { opacity: 0.8; }
+  100% { opacity: 0; transform: translate(17px, -13px); }
+}
+
+/* Serie läuft, aber heute fehlt noch ein Daily: nur der Kern, kleiner, und er flackert unruhig
+   wie kurz vorm Ausgehen. Nach dem Daily lodert die Flamme wieder voll. */
+.streak-card.at-risk .flame-outer,
+.streak-card.at-risk .flame-licks,
+.streak-card.at-risk .flame-sparks { display: none; }
+.streak-card.at-risk .flame-glow { opacity: 0.35; animation: none; }
+.streak-card.at-risk .flame-mid { opacity: 0.22; transform: scale(0.82); }
+.streak-card.at-risk .flame-core { animation: flame-gutter 2.6s linear infinite; }
+@keyframes flame-gutter {
+  0%, 100% { transform: scale(0.92); opacity: 1; }
+  8% { transform: scale(0.9, 0.8); opacity: 0.8; }
+  12% { transform: scale(0.93, 0.95); opacity: 1; }
+  38% { transform: scale(0.91, 0.87); }
+  44% { transform: scale(0.93, 0.96); }
+  66% { transform: scale(0.89, 0.78); opacity: 0.75; }
+  71% { transform: scale(0.92, 0.93); opacity: 1; }
 }
 /* Zahl im runden unteren Teil der Flamme */
 .streak-count {
@@ -159,17 +226,16 @@
 }
 .streak-count.two { font-size: 1rem; letter-spacing: -0.05em; }
 .streak-count.small { font-size: 0.78rem; letter-spacing: -0.05em; }
-@keyframes flame-flicker {
-  0%, 100% { transform: scale(1, 1); }
-  30% { transform: scale(0.97, 1.04); }
-  60% { transform: scale(1.02, 0.98); }
-}
-/* Noch keine Serie: Flamme nur als Umriss, kein Flackern */
-.streak-card.empty .streak-flame svg {
+/* Noch keine Serie: Flamme nur als Umriss, kein Feuer (hub.js hält auch die Form-Wechsel an) */
+.streak-card.empty .flame-glow,
+.streak-card.empty .flame-outer,
+.streak-card.empty .flame-mid,
+.streak-card.empty .flame-licks,
+.streak-card.empty .flame-sparks { display: none; }
+.streak-card.empty .flame-core {
   fill: none;
   stroke: rgba(251, 247, 240, 0.5);
   stroke-width: 1.6;
-  animation: none;
 }
 
 .streak-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
@@ -455,8 +521,12 @@ a.game-card:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--lift)
   .hub-mascot .eye,
   .hub-mascot-stage.hop .hub-mascot,
   .hub-mascot-stage.hop::after,
-  .streak-flame svg,
+  .flame-glow,
+  .streak-card.at-risk .flame-core,
   .game-daily::before { animation: none; }
+  /* Ohne Bewegung: stehende Flamme ohne abreißende Zungen und Funken (Form-Wechsel stoppt hub.js) */
+  .flame-licks,
+  .flame-sparks { display: none; }
   .game-card,
   .game-preview img { transition: none; }
 }

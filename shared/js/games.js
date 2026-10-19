@@ -21,4 +21,13 @@ SL.GAMES = [
     tags: ["30 Level", "Puzzle"],
     daily: false,
   },
+  {
+    id: "leap",
+    name: "Leap",
+    tagline: "Spring im richtigen Moment. Triff die Mitte.",
+    path: "games/leap/",
+    preview: "games/leap/preview.svg",
+    tags: ["30 Level", "Timing"],
+    daily: true,
+  },
 ];

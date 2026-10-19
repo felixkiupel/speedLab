@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="400" height="250">
+<!-- Ausschnitt einer Leap-Strecke: Die Figur ist über die Schanze geflogen, hat am ersten Punkt
+     perfekt abgesprungen und fliegt jetzt zum nächsten (Annäherungs-Ring). Oben die Coins einer
+     Gabelung, rechts eine Checkpoint-Plattform. -->
+<rect width="400" height="250" fill="#fbf7f0"/>
+<path d="M0.5 0V250M40.5 0V250M80.5 0V250M120.5 0V250M160.5 0V250M200.5 0V250M240.5 0V250M280.5 0V250M320.5 0V250M360.5 0V250M0 0.5H400M0 40.5H400M0 80.5H400M0 120.5H400M0 160.5H400M0 200.5H400M0 240.5H400" stroke="#e8e0d2" stroke-width="1" fill="none"/>
+
+<!-- Startplattform mit Schanze, Checkpoint-Plattform mit Fahne -->
+<path d="M-10 260V172Q-10 166 -4 166H30Q50 166 70 142V260Z" fill="#2b2420"/>
+<path d="M356 260V191Q356 185 362 185H410V260Z" fill="#2b2420"/>
+<g stroke="#2b2420" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M372 185V153" fill="none"/>
+<path d="M372 153L389 159.5L372 166Z" fill="#fbf7f0"/>
+</g>
+
+<!-- Weg bis hierher (blass) und die Spur hinter der Figur -->
+<g fill="#c7bcaa" fill-opacity="0.35">
+<circle cx="82" cy="117" r="2.5"/><circle cx="94" cy="108" r="2.5"/><circle cx="106" cy="104" r="2.5"/>
+<circle cx="118" cy="104" r="2.5"/><circle cx="130" cy="110" r="2.5"/><circle cx="141" cy="122" r="2.5"/>
+</g>
+<g fill="#c7bcaa">
+<circle cx="166.5" cy="114" r="3.4" fill-opacity="0.25"/>
+<circle cx="177.5" cy="100.9" r="4" fill-opacity="0.35"/>
+<circle cx="188.6" cy="91.5" r="4.6" fill-opacity="0.45"/>
+<circle cx="199.5" cy="85.4" r="5.2" fill-opacity="0.55"/>
+</g>
+
+<!-- Coins einer Gabelung -->
+<g fill="#2b2420">
+<circle cx="296" cy="62" r="5"/><circle cx="318" cy="55" r="5"/><circle cx="340" cy="60" r="5"/>
+</g>
+
+<!-- Punkt A: schon benutzt (blass) + Wertung -->
+<circle cx="150" cy="140" r="14" fill="none" stroke="#ddd3c2" stroke-width="2"/>
+<rect x="97" y="94" width="56" height="20" rx="10" fill="#2b2420"/>
+<text x="125" y="108" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif" font-size="11.5" font-weight="700" fill="#fbf7f0">Perfekt</text>
+
+<!-- Punkt B: als Nächstes, mit Annäherungs-Ring -->
+<circle cx="260" cy="115" r="23" fill="none" stroke="#85786a" stroke-width="2" stroke-opacity="0.7"/>
+<circle cx="260" cy="115" r="14" fill="#fbf7f0" stroke="#2b2420" stroke-width="3"/>
+<circle cx="260" cy="115" r="3" fill="#2b2420"/>
+
+<!-- Punkt C: Hochsprung -->
+<circle cx="330" cy="140" r="14" fill="#fbf7f0" stroke="#2b2420" stroke-width="3"/>
+<path d="M325 142.5L330 136.5L335 142.5" fill="none" stroke="#2b2420" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+<!-- Figur im Flug, Blick nach vorn -->
+<circle cx="210.5" cy="83" r="13" fill="#2b2420"/>
+<circle cx="205.3" cy="82" r="4.2" fill="#fbf7f0" stroke="#2b2420" stroke-width="0.7"/>
+<circle cx="207.1" cy="81.8" r="1.8" fill="#2b2420"/>
+<circle cx="215.7" cy="82" r="4.2" fill="#fbf7f0" stroke="#2b2420" stroke-width="0.7"/>
+<circle cx="217.5" cy="81.8" r="1.8" fill="#2b2420"/>
+
+</svg>

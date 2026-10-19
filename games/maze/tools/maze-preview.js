@@ -12,7 +12,8 @@ const root = path.join(__dirname, "..");
 const outFile = path.join(root, "preview.svg");
 
 globalThis.window = globalThis;
-for (const f of ["rng", "maze"]) {
+eval(fs.readFileSync(path.join(root, "..", "..", "shared", "js", "rng.js"), "utf8"));
+for (const f of ["maze"]) {
   eval(fs.readFileSync(path.join(root, "js", f + ".js"), "utf8"));
 }
 

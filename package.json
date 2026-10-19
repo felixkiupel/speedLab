@@ -6,6 +6,7 @@
     "dev": "npx --yes http-server . -p 5173 -c-1",
     "seeds": "node games/maze/tools/level-seeds.js",
     "maze-preview": "node games/maze/tools/maze-preview.js",
-    "drift-levels": "node games/drift/tools/level-gen.js"
+    "drift-levels": "node games/drift/tools/level-gen.js",
+    "leap-check": "node games/leap/tools/course-check.js"
   }
 }
