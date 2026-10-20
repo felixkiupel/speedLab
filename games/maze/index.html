@@ -34,7 +34,8 @@
       <p class="tagline">Finde den Weg. Werde schneller.</p>
       <div class="menu-buttons">
         <button id="btn-play" class="btn btn-primary">Spielen</button>
-        <button id="btn-shop" class="btn">Shop</button>
+        <!-- Shop gilt für alle Spiele; "from" sagt ihm, wohin "Zurück" führt -->
+        <a class="btn" href="../../shop/?from=maze">Shop</a>
         <button id="btn-settings" class="btn btn-ghost">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="8" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Einstellungen
         </button>
@@ -69,18 +70,6 @@
       <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="levels-coins">0</span></div>
     </header>
     <div id="level-map" class="level-map"></div>
-  </section>
-
-  <!-- SHOP -->
-  <section id="screen-shop" class="screen">
-    <header class="topbar">
-      <button class="btn btn-ghost btn-back" data-nav="screen-menu">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Menü
-      </button>
-      <h2>Shop</h2>
-      <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></div>
-    </header>
-    <div id="shop" class="shop"></div>
   </section>
 
   <!-- GAME -->
@@ -188,7 +177,7 @@
         </div>
       </div>
       <button id="btn-settings-close" class="btn btn-primary">Fertig</button>
-      <button id="btn-reset-save" class="btn btn-ghost btn-danger" data-confirm="Level & Skins wirklich löschen?">Maze-Fortschritt löschen</button>
+      <button id="btn-reset-save" class="btn btn-ghost btn-danger" data-confirm="Level & Bestzeiten wirklich löschen?">Maze-Fortschritt löschen</button>
     </div>
   </div>
 
@@ -201,6 +190,9 @@
 <script src="../../shared/js/links.js"></script>
 <script src="../../shared/js/days.js"></script>
 <script src="../../shared/js/profile.js"></script>
+<script src="../../shared/js/quests.js"></script>
+<script src="../../shared/js/cosmetics.js"></script>
+<script src="../../shared/js/cosmetics-draw.js"></script>
 <script src="../../shared/js/rng.js"></script>
 <script src="../../shared/js/audio.js"></script>
 <script src="../../shared/js/effects.js"></script>

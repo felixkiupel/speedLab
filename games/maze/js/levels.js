@@ -39,6 +39,12 @@ const LEVEL_SEEDS = [
 
 const LEVEL_COUNT = SL.CHAPTERS[SL.CHAPTERS.length - 1].lastLevel;
 
+// Preis zum Freischalten. Die Belohnung eines Levels richtet sich nach dem Preis des nächsten
+// (SL.Profile.levelPay) - darum als Funktion, die auch nach Level 30 weiterrechnet.
+SL.levelUnlockCost = function levelUnlockCost(id) {
+  return id <= 1 ? 0 : 40 + (id - 2) * 35;
+};
+
 SL.LEVELS = (function buildLevels() {
   const levels = [];
   for (let id = 1; id <= LEVEL_COUNT; id++) {
@@ -53,7 +59,7 @@ SL.LEVELS = (function buildLevels() {
       cols: rooms,
       loopFactor,
       coinCount: Math.min(16, 4 + Math.floor(id / 2)),
-      unlockCost: id <= 1 ? 0 : 40 + (id - 2) * 35,
+      unlockCost: SL.levelUnlockCost(id),
       seed: LEVEL_SEEDS[id - 1] ?? id * 7919, // Fallback, falls die Seed-Liste kürzer ist
     });
   }

@@ -9,7 +9,7 @@ SL.GAMES = [
     tagline: "Finde den Weg. Werde schneller.",
     path: "games/maze/",
     preview: "games/maze/preview.svg",
-    tags: ["30 Level", "Skins"],
+    tags: ["30 Level", "Tempo"],
     daily: true, // hat ein tägliches Rätsel, das für die Serie zählt
   },
   {

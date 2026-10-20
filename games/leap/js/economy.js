@@ -7,11 +7,6 @@ window.SL = window.SL || {};
 const STAR_ACCURACY = { 3: 90, 2: 65 };
 SL.STAR_ACCURACY = STAR_ACCURACY;
 
-// So viel ist ein eingesammelter Coin wert: 5 in Kapitel 1, 8 in Kapitel 2, 11 in Kapitel 3
-SL.coinValue = function coinValue(chapterId) {
-  return 5 + 3 * ((chapterId || 1) - 1);
-};
-
 // Prozent ohne Nachkommastellen, abgerundet - 89,9 % soll nicht wie 90 % aussehen
 SL.formatAccuracy = function formatAccuracy(pct) {
   return pct == null ? "–" : `${Math.floor(pct)} %`;
@@ -47,21 +42,26 @@ SL.Economy = {
     return 1;
   },
 
-  // Belohnung wie bei Drift, mit Einzelposten fürs Ergebnis:
-  //   pro Lauf      Grundbetrag (10 + 3 × Level), 3 Sterne verdoppeln ihn, 2 Sterne +50 %,
-  //                 ohne Absturz +5 + Level, jeder Coin je nach Kapitel 5/8/11
-  //   einmalig      erster Abschluss (10 + 4 × Level) und jeder neue Bestwert-Stern (8 + 3 × Level)
-  computeReward({ levelId, chapterId, stars, falls, coinsCollected, prevStars }) {
-    const base = 10 + 3 * levelId;
-    const parts = [{ label: "Geschafft", coins: base }];
-    if (stars === 3) parts.push({ label: "3 Sterne", coins: base });
-    else if (stars === 2) parts.push({ label: "2 Sterne", coins: Math.round(base / 2) });
-    if (falls === 0) parts.push({ label: "Ohne Absturz", coins: 5 + levelId });
-    if (coinsCollected) parts.push({ label: `${coinsCollected} × Coin`, coins: coinsCollected * SL.coinValue(chapterId) });
-    if (prevStars == null) parts.push({ label: "Erster Abschluss", coins: 10 + 4 * levelId });
-    const newStars = stars - (prevStars || 0);
-    if (newStars > 0) parts.push({ label: newStars === 1 ? "Neuer Stern" : `${newStars} neue Sterne`, coins: newStars * (8 + 3 * levelId) });
+  // Belohnung wie bei Drift, mit Einzelposten fürs Ergebnis: die Sterne zahlen sich am Preis des
+  // nächsten Levels aus (3 Sterne = reicht direkt, siehe SL.Profile.levelPay), dazu jeder
+  // eingesammelte Coin 1:1
+  computeReward({ levelId, stars, coinsCollected }) {
+    const parts = [{ label: stars === 1 ? "1 Stern" : `${stars} Sterne`, coins: SL.Profile.levelPay(SL.levelUnlockCost(levelId + 1), stars) }];
+    if (coinsCollected) parts.push({ label: `${coinsCollected} × Coin`, coins: coinsCollected });
     return { parts, total: parts.reduce((sum, p) => sum + p.coins, 0) };
+  },
+
+  // Aufgaben für den Shop (shared/js/quests.js), die nur Leap kennt. Geprüft wird aus dem
+  // Spielstand - so zählen auch Bestwerte von früher. Beim Start, nach jedem Level und an jedem
+  // Checkpoint im Endlosmodus.
+  checkQuests(state) {
+    const results = SL.LEVELS.map((level) => ({ level, r: state.levelResults[String(level.id)] }));
+    const perfect = ({ r }) => Boolean(r && r.bestAccuracy >= 100);
+    if (results.some((x) => x.level.chapter === 1 && perfect(x))) SL.Quests.complete("leap-easy-100");
+    if (results.some((x) => x.level.chapter === 3 && perfect(x))) SL.Quests.complete("leap-hard-100");
+    if (results.every(perfect)) SL.Quests.complete("leap-all-100");
+    if (results.every(({ r }) => r && r.stars === 3)) SL.Quests.complete("leap-all-3");
+    if (state.endless.checkpoints >= 100) SL.Quests.complete("endless-100");
   },
 
   // Trägt ein Run-Ergebnis ein: Coins werden immer gutgeschrieben, Bestwerte nur verbessert
@@ -75,6 +75,7 @@ SL.Economy = {
       timesPlayed: (prev?.timesPlayed || 0) + 1,
     };
     SL.Storage.save(state);
+    this.checkQuests(state);
     SL.Profile.addCoins(coinsEarned);
   },
 };

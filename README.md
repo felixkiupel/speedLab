@@ -16,11 +16,15 @@ Danach <http://localhost:5173> öffnen.
 ```
 index.html            Startseite (Spieleauswahl, Coins, Daily-Serie)
 hub/                  Styles + Logik der Startseite
+shop/                 Shop-Seite: Skins und Spuren für alle Spiele (Knopf im Menü jedes Spiels)
 shared/               Gemeinsam für alle Seiten
   css/base.css        Farben, Schrift, Buttons, Logo, Figur (Startseite + Spiele)
   css/game.css        Aufbau jeder Spielseite: Menü, Level-Auswahl, HUD, Pause, Ergebnis,
                       Daily-Karte, Einstellungen, Toast
-  js/profile.js       Coins + Daily-Serie (spielübergreifend)
+  js/profile.js       Coins, Daily-Serie, gekaufte Skins, geschaffte Aufgaben (spielübergreifend)
+  js/quests.js        Aufgaben, die Skins/Spuren im Shop freischalten
+  js/cosmetics.js     Katalog der Skins/Spuren, Kaufen + Ausrüsten (neuer Skin = eine Zeile)
+  js/cosmetics-draw.js  Muster/Stile der Skins und Spuren + Zeichnen (Shop und Spiele)
   js/days.js          Tages-Schlüssel (Tageswechsel um Mitternacht Ortszeit)
   js/games.js         Liste aller Spiele für die Startseite
   js/links.js         Ordner-Links funktionieren auch beim Öffnen als Datei
@@ -46,7 +50,8 @@ games/leap/           Das Timing-Sprungspiel
 
 Alles liegt im `localStorage` des Browsers, jeweils mit dem Präfix `speedlab_`:
 
-- `speedlab_profile_v1` – Coins und Daily-Serie, gilt für alle Spiele
+- `speedlab_profile_v1` – Coins, Daily-Serie, Skins aus dem Shop und geschaffte Aufgaben, gilt für
+  alle Spiele
 - `speedlab_<spiel>_v1` – Fortschritt und Einstellungen eines Spiels (z. B. `speedlab_maze_v1`)
 
 ## Neues Spiel hinzufügen
@@ -66,10 +71,18 @@ Am einfachsten: `games/leap/` kopieren (das jüngste Spiel) und den Spielteil au
 6. Tipp-Steuerung fürs Handy (optional): `.tap-pad` > `.tap-field` > `.tap-btn` – Fläche und Optik
    der schwarzen Knöpfe kommen aus `game.css`, Anzahl, Größe und Position legt das Spiel fest
    (Maze: Raute aus vier, Leap: einer in der Mitte).
-7. Coins über `SL.Profile.coins()`, `SL.Profile.addCoins(n)` und `SL.Profile.spend(n)`.
-8. Geschafftes Daily melden: `SL.Profile.completeDaily("<id>")` – liefert `{ firstForGame, streak }`.
-9. Eintrag in `shared/js/games.js` (Name, Spruch, Vorschaubild) – dann erscheint die Kachel.
-10. Zurück zur Startseite: `<a href="../../">`.
+7. Coins über `SL.Profile.coins()`, `SL.Profile.addCoins(n)` und `SL.Profile.spend(n)`. Belohnung
+   für ein Level wie in allen Spielen: `SL.Profile.levelPay(preisDesNächstenLevels, sterne)` plus
+   jeder eingesammelte Coin 1:1 (3 Sterne reichen direkt fürs nächste Level, 2 Sterne nach zwei
+   Läufen, 1 Stern nach drei).
+8. Shop: `quests.js`, `cosmetics.js`, `cosmetics-draw.js` einbinden. Die Figur mit
+   `SL.CosmeticsDraw.drawFigure(...)` im Skin `SL.Cosmetics.equipped("skin")` zeichnen, die Spur mit
+   `drawTrail`. Eigene Aufgaben in `shared/js/quests.js` anlegen und im Spiel mit
+   `SL.Quests.complete("<id>")` melden (am besten aus dem Spielstand, beim Start und nach jedem Level).
+9. Geschafftes Daily melden: `SL.Profile.completeDaily("<id>")` – liefert `{ firstForGame, streak }`.
+   Beim ersten Mal am Tag gibt es `SL.Profile.dailyBonus(sterne, streak)` Coins.
+10. Eintrag in `shared/js/games.js` (Name, Spruch, Vorschaubild) – dann erscheint die Kachel.
+11. Zurück zur Startseite: `<a href="../../">`.
 
 ## Veröffentlichen (GitHub Pages)
 

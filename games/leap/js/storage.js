@@ -10,6 +10,7 @@ function defaultSave() {
     levelResults: {}, // { [levelId]: { bestAccuracy, stars, bestCoins, timesPlayed } }
     levelSet: SL.LEVEL_SET_VERSION, // zu welcher Strecken-Generation die levelResults gehören
     daily: { results: {} }, // { [YYYY-MM-DD]: { bestAccuracy, stars, attempts } }
+    endless: { unlocked: false, checkpoints: 0 }, // Endlosmodus: frei (mit allen Sternen), Checkpoints insgesamt
     coachSeen: [], // Kapitel, deren "Neu: ..."-Hinweis schon gezeigt wurde
     settings: defaultSettings(),
   };
@@ -38,6 +39,7 @@ SL.Storage = {
       }
       state.settings = Object.assign(defaultSettings(), parsed.settings);
       state.daily = Object.assign(defaultSave().daily, parsed.daily);
+      state.endless = Object.assign(defaultSave().endless, parsed.endless);
       return state;
     } catch (e) {
       console.warn("Speicherstand konnte nicht geladen werden, starte neu.", e);

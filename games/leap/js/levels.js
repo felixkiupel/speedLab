@@ -47,6 +47,12 @@ SL.levelCurve = function levelCurve(id) {
 
 const LEVEL_COUNT = SL.CHAPTERS[SL.CHAPTERS.length - 1].lastLevel;
 
+// Preis zum Freischalten. Die Belohnung eines Levels richtet sich nach dem Preis des nächsten
+// (SL.Profile.levelPay) - darum als Funktion, die auch nach Level 30 weiterrechnet.
+SL.levelUnlockCost = function levelUnlockCost(id) {
+  return id <= 1 ? 0 : 60 + (id - 2) * 15;
+};
+
 SL.LEVELS = (function buildLevels() {
   const levels = [];
   for (let id = 1; id <= LEVEL_COUNT; id++) {
@@ -55,8 +61,7 @@ SL.LEVELS = (function buildLevels() {
       id,
       name: `Level ${id}`,
       chapter: curve.chapter.id,
-      // Kosten wachsen im selben Takt wie die Belohnung (SL.Economy.computeReward)
-      unlockCost: id <= 1 ? 0 : 60 + (id - 2) * 15,
+      unlockCost: SL.levelUnlockCost(id),
       seed: id * 7919 + 17, // fester Seed pro Level - ändern = neue Strecke (LEVEL_SET_VERSION erhöhen)
     });
   }

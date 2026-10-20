@@ -61,7 +61,9 @@ SL.Renderer = {
   },
 
   // state: { board, layer, cell, width, height, pixelRatio, now, session, effects, introStart,
-  //          marks, goalFlashAt, hit: { key|edge, start }, guide, highlight }
+  //          marks, goalFlashAt, hit: { key|edge, start }, guide, highlight, skin, trailStyle, trail }
+  //   skin, trailStyle: ausgerüstet im Shop (shared/js/cosmetics.js)
+  //   trail: zuletzt überrutschte Felder [{r, c, seed}], ältestes zuerst
   //   guide: { dir, path, start } - Tutorial-Pfeil: wohin der nächste Zug rutscht
   //   highlight: Feldtyp (z.B. SL.SNOW), dessen Felder pulsieren - "Neu"-Hinweis eines Kapitels
   render(ctx, s) {
@@ -81,10 +83,16 @@ SL.Renderer = {
     if (s.highlight != null) drawHighlight(ctx, board, s.highlight, cell, now);
     const playerRadius = cell * 0.32 * popScale((introT - 0.35) / 0.5);
     drawTrails(ctx, s.marks, cell, now, playerRadius);
+    // Spur aus dem Shop über die zuletzt überrutschten Felder. Die Standard-Spur (Punkte) zeigt
+    // Drift nicht - hier ist der Schweif der Standard.
+    if (!s.trailStyle.default) {
+      const points = s.trail.map((t) => ({ x: (t.c + 0.5) * cell, y: (t.r + 0.5) * cell, seed: t.seed }));
+      SL.CosmeticsDraw.drawTrail(ctx, points, cell, s.trailStyle, s.skin, now);
+    }
 
     // Ins Loch gefallen: die Figur versinkt dort statt obendrauf gezeichnet zu werden
     const fallMs = session.getFallMs(now);
-    if (fallMs != null) drawHoleFall(ctx, session.pos, cell, fallMs, playerRadius, session.dir);
+    if (fallMs != null) drawHoleFall(ctx, session.pos, cell, fallMs, playerRadius, session.dir, s.skin, now);
 
     const maxDist = board.rows + board.cols;
     for (let r = 0; r < board.rows; r++) {
@@ -123,7 +131,7 @@ SL.Renderer = {
       const pos = session.getPlayerPos(now);
       const finishMs = session.getFinishMs(now);
       const body = finishMs == null ? null : goalBody(playerRadius, cell, finishMs);
-      drawPlayer(ctx, (pos.c + 0.5) * cell, (pos.r + 0.5) * cell, playerRadius, session.dir, session.getDeform(now), body);
+      drawPlayer(ctx, (pos.c + 0.5) * cell, (pos.r + 0.5) * cell, playerRadius, session.dir, session.getDeform(now), body, s.skin, now);
     }
 
     effects.render(ctx, (x, y) => [x, y], { w: width, h: height });
@@ -188,7 +196,7 @@ function drawHole(ctx, x, y, s) {
 // Reinfallen: Die Figur kippt in die Tiefe - wird kleiner, sackt ab, verschwindet hinter dem
 // vorderen Rand und wird dabei dunkel. Kurz danach läuft ein blasser Ring vom Rand weg.
 //   ms = Zeit seit dem Reinfallen (das Versinken dauert SL.FALL_MS)
-function drawHoleFall(ctx, at, s, ms, radius, dir) {
+function drawHoleFall(ctx, at, s, ms, radius, dir, skin, now) {
   const cx = (at.c + 0.5) * s, cy = (at.r + 0.5) * s;
   const r = s * HOLE_R;
   const t = Math.min(1, ms / SL.FALL_MS);
@@ -200,7 +208,7 @@ function drawHoleFall(ctx, at, s, ms, radius, dir) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.clip();
-    drawPlayer(ctx, cx, py, rad, dir, null);
+    drawPlayer(ctx, cx, py, rad, dir, null, null, skin, now);
     ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.25) / 0.6));
     ctx.beginPath();
     ctx.arc(cx, py, rad * 1.05, 0, Math.PI * 2);
@@ -402,22 +410,11 @@ function goalBody(radius, s, ms) {
   };
 }
 
-// Quadrat mit runden Ecken um (x, y); corner >= half ergibt einen Kreis
-function bodyPath(ctx, x, y, half, corner) {
-  const k = Math.max(0, Math.min(corner, half));
-  ctx.beginPath();
-  ctx.moveTo(x, y - half);
-  ctx.arcTo(x + half, y - half, x + half, y + half, k);
-  ctx.arcTo(x + half, y + half, x - half, y + half, k);
-  ctx.arcTo(x - half, y + half, x - half, y - half, k);
-  ctx.arcTo(x - half, y - half, x + half, y - half, k);
-  ctx.closePath();
-}
-
 // deform: { dir, along } - along > 0 streckt in Fahrtrichtung, < 0 staucht (Aufprall). Beim
 // Stauchen rückt die Mitte zur Wand, damit die Figur an der Wand plattgedrückt wird statt von ihr
-// wegzuschrumpfen. body: Form im Ziel (goalBody), sonst Kreis.
-function drawPlayer(ctx, x, y, radius, dir, deform, body = null) {
+// wegzuschrumpfen. body: Form im Ziel (goalBody), sonst Kreis. Körper im Skin-Muster + Augen (die
+// Pupillen schauen in Rutschrichtung) kommen aus shared/js/cosmetics-draw.js, wie im Shop.
+function drawPlayer(ctx, x, y, radius, dir, deform, body, skin, now) {
   if (radius <= 0.5) return;
   ctx.save();
   if (deform && deform.along) {
@@ -430,37 +427,7 @@ function drawPlayer(ctx, x, y, radius, dir, deform, body = null) {
     ctx.scale(horizontal ? a : q, horizontal ? q : a);
     ctx.translate(-x, -y);
   }
-  if (body) bodyPath(ctx, x, y, body.half, body.corner);
-  else {
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-  }
-  ctx.fillStyle = INK;
-  ctx.fill();
-  drawFace(ctx, x, y, dir, radius);
+  const look = dir ? { x: SL.DIRS[dir].dc, y: SL.DIRS[dir].dr } : null;
+  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, skin, look, now, body);
   ctx.restore();
-}
-
-// Zwei Augen wie bei Maze, die Pupillen schauen in Rutschrichtung
-function drawFace(ctx, cx, cy, dir, radius) {
-  const d = dir ? SL.DIRS[dir] : null;
-  const shiftX = d ? d.dc * radius * 0.14 : 0;
-  const shiftY = d ? d.dr * radius * 0.14 : 0;
-  const eyeR = radius * 0.32;
-  const pupilR = radius * 0.14;
-  const eyeY = cy - radius * 0.08;
-  for (const side of [-1, 1]) {
-    const eyeX = cx + side * radius * 0.4;
-    ctx.beginPath();
-    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
-    ctx.fillStyle = CREAM;
-    ctx.fill();
-    ctx.lineWidth = Math.max(0.75, radius * 0.05);
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(eyeX + shiftX, eyeY + shiftY, pupilR, 0, Math.PI * 2);
-    ctx.fillStyle = INK;
-    ctx.fill();
-  }
 }

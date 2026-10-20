@@ -1,4 +1,5 @@
-/* Leap - nur was es nur in Leap gibt: Spielfeld (Seitenansicht) und der Start-Hinweis darüber.
+/* Leap - nur was es nur in Leap gibt: Spielfeld (Seitenansicht), der Start-Hinweis darüber und die
+   Endlos-Karte in der Level-Auswahl.
    Farben, Schrift, Buttons, Logo, Figur: shared/css/base.css. Menü, Level-Auswahl, HUD, Pause,
    Ergebnis, Daily-Karte, Einstellungen: shared/css/game.css (beide werden vorher geladen). */
 
@@ -15,6 +16,8 @@
 
 /* Treffsicherheit: feste Mindestbreite, damit die Mitte beim Zählen nicht wackelt */
 #hud-accuracy { min-width: 3.4em; text-align: center; }
+/* Endlos: kleine Fahne vor der Zahl der erreichten Checkpoints */
+#hud-accuracy .hud-flag { display: inline-flex; vertical-align: -0.08em; margin-right: 3px; font-size: 0.8em; }
 
 #game-canvas {
   display: block;
@@ -52,6 +55,95 @@
 @media (max-width: 480px) {
   .start-hint { white-space: normal; text-wrap: balance; border-radius: 14px; }
 }
+
+/* ---------- 100 % (Level-Auswahl) ---------- */
+/* Level mit 100 % Treffsicherheit: Die drei Sterne der Kachel glänzen in hellem, bläulichem Silber
+   wie eine Holo-Karte und leuchten leicht. Unten ein ruhiger Verlauf von Weiß zu kühlem Silberblau,
+   darüber zieht alle paar Sekunden ein Lichtschein von Stern zu Stern, der kurz ins Weiße, Lavendel
+   und Mint schillert. Der Stern selbst ist eine Maske (gleiche Form wie das Stern-Icon), das Icon
+   darin bleibt nur als Platzhalter für die Größe. Das Glühen sitzt auf der Sternreihe, weil die Maske
+   ein Glühen am Stern selbst wegschneiden würde. */
+.level-tile.flawless .lv-stars { filter: drop-shadow(0 0 3px rgba(225, 236, 255, 0.55)); }
+.level-tile.flawless .star.on {
+  background:
+    linear-gradient(115deg, transparent 0 32%, #f2f7ff 40%, #ffffff 44% 50%, #efe9ff 54%, #e0f8f3 58%, transparent 66% 100%),
+    linear-gradient(135deg, #ffffff 0%, #eef3fb 30%, #cdd7e8 65%, #a6b3cb 100%);
+  background-size: 300% 100%, 100% 100%;
+  background-position: 0 0, 0 0;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.05L14.91 9.05L22.46 9.65L16.71 14.58L18.47 21.95L12 18L5.53 21.95L7.29 14.58L1.54 9.65L9.09 9.05Z' fill='%23000' stroke='%23000' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.05L14.91 9.05L22.46 9.65L16.71 14.58L18.47 21.95L12 18L5.53 21.95L7.29 14.58L1.54 9.65L9.09 9.05Z' fill='%23000' stroke='%23000' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  animation: holo-sweep 4s ease-in-out infinite;
+}
+.level-tile.flawless .star.on .icon { visibility: hidden; }
+/* Der Schein läuft nacheinander über die drei Sterne */
+.level-tile.flawless .star.on:nth-child(2) { animation-delay: 0.12s; }
+.level-tile.flawless .star.on:nth-child(3) { animation-delay: 0.24s; }
+@keyframes holo-sweep {
+  0% { background-position: 100% 0, 0 0; }
+  40%, 100% { background-position: 0 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-tile.flawless .star.on { animation: none; }
+}
+
+/* ---------- ENDLOSMODUS (ganz unten in der Level-Auswahl) ---------- */
+/* Breite Karte statt Kachel: Symbol | Text | Checkpoints. Frei = dunkel wie eine 3-Sterne-Kachel,
+   gesperrt = gedämpft wie eine gesperrte Kachel. */
+.endless-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 20px 14px 14px;
+  background: var(--ink);
+  color: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.12s ease;
+}
+.endless-card:hover { transform: translateY(-2px); }
+.endless-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.endless-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.endless-icon .icon { font-size: 1.7rem; }
+.endless-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.endless-text b { font-size: 1.05rem; }
+.endless-text span { font-size: 0.82rem; color: rgba(251, 247, 240, 0.65); }
+.endless-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.endless-stat span {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(251, 247, 240, 0.6);
+}
+.endless-stat b { font-size: 1.4rem; line-height: 1; }
+
+.endless-card.locked { background: var(--bg); color: var(--text-dim); border-color: var(--border-soft); cursor: not-allowed; }
+.endless-card.locked:hover { transform: none; }
+.endless-card.locked .endless-icon { background: none; color: var(--text-dim); border: 2px solid var(--border-soft); }
+.endless-card.locked .endless-text b { color: var(--text); }
+.endless-card.locked .endless-text span,
+.endless-card.locked .endless-stat span { color: var(--text-dim); }
+.endless-card.shake { animation: shake 0.35s ease; border-color: var(--danger); }
 
 /* ---------- TIPP-STEUERUNG (Handy) ---------- */
 /* Fläche, Knopf-Optik und Ring kommen aus game.css. Leap hat nur einen Knopf, mittig und größer

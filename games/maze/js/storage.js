@@ -1,5 +1,5 @@
-// Save/Load Wrapper um localStorage - nur der Maze-eigene Fortschritt. Coins und die Daily-Serie
-// liegen spielübergreifend im Profil (shared/js/profile.js).
+// Save/Load Wrapper um localStorage - nur der Maze-eigene Fortschritt. Coins, die Daily-Serie und
+// die Skins aus dem Shop liegen spielübergreifend im Profil (shared/js/profile.js).
 window.SL = window.SL || {};
 
 const SAVE_KEY = "speedlab_maze_v1";
@@ -9,8 +9,6 @@ function defaultSave() {
     unlockedLevels: [1],
     levelResults: {}, // { [levelId]: { bestTimeMs, stars, timesPlayed } }
     levelSet: SL.LEVEL_SET_VERSION, // zu welcher Level-Generation die levelResults gehören
-    ownedCosmetics: ["default", "trail-dots"],
-    equipped: { skin: "default", trail: "trail-dots" },
     daily: { results: {} }, // { [YYYY-MM-DD]: { bestTimeMs, stars, attempts } }
     settings: defaultSettings(),
   };
@@ -32,24 +30,18 @@ SL.Storage = {
       // Merge mit Default, falls Felder in alten Saves fehlen
       const state = Object.assign(defaultSave(), parsed);
       // Andere Level-Generation: Bestzeiten/Sterne gehören zu anderen Labyrinthen und werden
-      // verworfen. Freigeschaltete Level und Skins bleiben erhalten (Coins liegen im Profil).
+      // verworfen. Freigeschaltete Level bleiben erhalten (Coins liegen im Profil).
       if (parsed.levelSet !== SL.LEVEL_SET_VERSION) {
         state.levelResults = {};
         state.levelSet = SL.LEVEL_SET_VERSION;
       }
-      // Alte Saves kannten nur eine ausgerüstete Farbe (equippedCosmetic) -> wird zum Skin
-      if (!parsed.equipped) {
-        state.equipped = { skin: parsed.equippedCosmetic || "default", trail: "trail-dots" };
-        delete state.equippedCosmetic;
-      }
+      // Skins lagen früher hier - das Profil hat sie beim Laden schon übernommen (migrateShop)
+      delete state.ownedCosmetics;
+      delete state.equipped;
+      delete state.equippedCosmetic;
       // Neue Bereiche in alten Saves mit Standardwerten auffüllen (flaches Merge reicht nicht)
       state.settings = Object.assign(defaultSettings(), parsed.settings);
       state.daily = Object.assign(defaultSave().daily, parsed.daily);
-      // Gratis-Items (auch später neu hinzugekommene) besitzt jeder
-      for (const type of SL.COSMETIC_TYPES) {
-        const free = SL.getDefaultCosmetic(type).id;
-        if (!state.ownedCosmetics.includes(free)) state.ownedCosmetics.push(free);
-      }
       return state;
     } catch (e) {
       console.warn("Speicherstand konnte nicht geladen werden, starte neu.", e);

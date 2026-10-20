@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>speedLab Shop</title>
+<meta name="description" content="speedLab Shop – Skins und Spuren für deine Figur.">
+<meta name="theme-color" content="#fbf7f0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../shared/css/base.css">
+<link rel="stylesheet" href="../shared/css/game.css">
+<link rel="stylesheet" href="shop.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Ein einziger Screen im selben Gerüst wie die Spielseiten. Gescrollt wird im Screen, die
+       Kopfzeile bleibt dabei oben stehen. "Zurück" biegt shop.js auf das Spiel um, aus dem man kam. -->
+  <section class="screen active shop-screen">
+    <header class="topbar shop-topbar">
+      <a id="shop-back" class="btn btn-ghost btn-back" href="../">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Alle Spiele
+      </a>
+      <h2>Shop</h2>
+      <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></div>
+    </header>
+    <!-- Inhalt setzt shop.js: Dein Look, darunter je Kategorie alle Items -->
+    <div id="shop" class="shop"></div>
+  </section>
+
+</div>
+
+<script src="../shared/js/links.js"></script>
+<script src="../shared/js/days.js"></script>
+<script src="../shared/js/profile.js"></script>
+<script src="../shared/js/games.js"></script>
+<script src="../shared/js/quests.js"></script>
+<script src="../shared/js/cosmetics.js"></script>
+<script src="../shared/js/cosmetics-draw.js"></script>
+<script src="shop.js"></script>
+</body>
+</html>

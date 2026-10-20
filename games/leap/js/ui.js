@@ -10,9 +10,11 @@ SL.UI = (function () {
 
   let state; // Save-State (aus Storage)
   let currentLevelId = null;
-  let currentMode = "level"; // "level" | "daily"
+  let currentMode = "level"; // "level" | "daily" | "endless"
   let currentConfig = null; // Level- bzw. Daily-Konfiguration des laufenden Spiels
   let session = null;
+  let endlessRun = null; // Endlos: { course, extend } - die Strecke wächst beim Spielen
+  let endlessBanked = new Set(); // Endlos: Coin-IDs, die schon gutgeschrieben sind
   const effects = new SL.Effects();
   let finishTimer = null; // kurze Pause mit Konfetti zwischen Zieleinlauf und Ergebnis
   let resultTimers = [];
@@ -25,7 +27,10 @@ SL.UI = (function () {
   let pixelRatio = 1;
   const cam = { x: 0, y: 0 };
   let camLockY = null; // beim Absturz bleibt die Kamera stehen, die Figur fällt aus dem Bild
-  let trail = [];
+  let trail = []; // zuletzt besuchte Positionen [{x, y, seed}] für die Spur
+  let trailSeed = 0;
+  let playerSkin = null; // ausgerüsteter Skin + Spur, beim Start des Laufs festgelegt
+  let playerTrail = null;
   let lastTrailAt = 0;
   let hits = new Map(); // Punkt-ID -> Zeitpunkt des Absprungs (fürs Aufleuchten)
   let squash = null;
@@ -72,6 +77,8 @@ SL.UI = (function () {
   const LOCK_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="5" y="10.5" width="14" height="10.5" rx="2.5"/></svg>`;
   const FLAME_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 3.3-1.3 5-3 6.8C7.3 11 6 12.8 6 15.3 6 18.7 8.7 21.5 12 21.5s6-2.8 6-6.2c0-2.5-1.2-4.3-2.7-5.7.1 1.7-.6 3-1.7 3.6.5-3.9-.4-7.4-1.6-10.7z"/></svg>`;
   const PLAY_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>`;
+  const INFINITY_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c-1.8-2.2-3.4-3.5-5.2-3.5a3.5 3.5 0 0 0 0 7c1.8 0 3.4-1.3 5.2-3.5s3.4-3.5 5.2-3.5a3.5 3.5 0 0 1 0 7c-1.8 0-3.4-1.3-5.2-3.5z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const FLAG_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 21V4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M6.5 4.2l12 4.6-12 4.6z"/></svg>`;
   const INLINE_COIN = `<span class="inline-icon">${COIN_ICON}</span>`;
   const INLINE_FLAME = `<span class="inline-icon">${FLAME_ICON}</span>`;
 
@@ -113,6 +120,7 @@ SL.UI = (function () {
 
     const classes = ["level-tile"];
     if (result && result.stars === 3) classes.push("perfect");
+    if (result && result.bestAccuracy >= 100) classes.push("flawless"); // Sterne in Holo-Silber
     if (level.id === nextLevelId) classes.push("next");
     return `<button type="button" class="${classes.join(" ")}" data-level="${level.id}">
       ${level.id === nextLevelId ? `<span class="lv-badge">${result ? "Nochmal" : "Weiter"}</span>` : ""}
@@ -145,7 +153,8 @@ SL.UI = (function () {
         <div class="summary-rule-head">${starsHtml(3)}<b>ab ${SL.STAR_ACCURACY[3]} %</b></div>
         <p>Perfekt = 3, Gut = 2, OK = 1 Punkt pro Sprung. Treffsicherheit = Punkte von allen möglichen.</p>
       </div>
-      ${next ? `<button type="button" class="btn btn-primary summary-continue" data-level="${next.id}">Weiterspielen<span class="btn-cost">Level ${next.id}</span></button>` : ""}
+      ${next ? `<button type="button" class="btn btn-primary summary-continue" data-level="${next.id}">Weiterspielen<span class="btn-cost">Level ${next.id}</span></button>`
+        : SL.Endless.isUnlocked(state) ? `<button type="button" class="btn btn-primary summary-continue" data-endless>Endlos spielen</button>` : ""}
     </div>`;
 
     const chapters = SL.CHAPTERS.map((ch) => {
@@ -168,8 +177,44 @@ SL.UI = (function () {
       </section>`;
     }).join("");
 
-    map.innerHTML = summary + chapters;
+    map.innerHTML = summary + chapters + endlessHtml(totalStars, maxStars);
     refreshCoinDisplays();
+  }
+
+  // Ganz unten: der Endlosmodus - gesperrt, bis alle Level 3 Sterne haben
+  function endlessHtml(totalStars, maxStars) {
+    const unlocked = SL.Endless.isUnlocked(state);
+    const total = state.endless.checkpoints;
+    const card = unlocked
+      ? `<button type="button" class="endless-card" data-endless aria-label="Endlos spielen, ${total} Checkpoints geschafft">
+          <span class="endless-icon">${INFINITY_ICON}</span>
+          <span class="endless-text"><b>Endlos spielen</b><span>Abgestürzt? Weiter geht's am letzten Checkpoint</span></span>
+          <span class="endless-stat"><span>Checkpoints</span><b>${total}</b></span>
+        </button>`
+      : `<button type="button" class="endless-card locked" data-endless aria-label="Endlosmodus, frei mit allen ${maxStars} Sternen">
+          <span class="endless-icon">${LOCK_ICON}</span>
+          <span class="endless-text"><b>Noch ${maxStars - totalStars} Sterne</b><span>Hol in jedem Level 3 Sterne, dann geht's los</span></span>
+          <span class="endless-stat"><span>Sterne</span><b>${totalStars}/${maxStars}</b></span>
+        </button>`;
+    return `<section class="chapter ${unlocked ? "" : "chapter-locked"}">
+      <header class="chapter-head">
+        <div class="chapter-title">
+          <span class="chapter-kicker">Bonus · Alle ${maxStars} Sterne</span>
+          <h3>Endlos</h3>
+          <p>Eine Strecke ohne Ende – mal ruhig, mal schnell, mit allen Sprüngen aus den drei Kapiteln. Jeder Checkpoint zählt, auch über mehrere Läufe.</p>
+        </div>
+      </header>
+      ${card}
+    </section>`;
+  }
+
+  function onEndlessClick(el) {
+    if (SL.Endless.isUnlocked(state)) {
+      openEndless();
+      return;
+    }
+    SL.Audio.play("bump");
+    restartAnimation(el, "shake");
   }
 
   function onLevelTileClick(levelId, tileEl) {
@@ -230,6 +275,8 @@ SL.UI = (function () {
     session = new SL.LeapSession(course);
     effects.clear();
     trail = [];
+    playerSkin = SL.Cosmetics.equipped("skin");
+    playerTrail = SL.Cosmetics.equipped("trail");
     hits = new Map();
     squash = null;
     flashAt = -Infinity;
@@ -242,6 +289,7 @@ SL.UI = (function () {
     hudCoins.textContent = 0;
     hudStarTier = null;
     lastAccuracyText = "";
+    hudStars.style.display = mode === "endless" ? "none" : "";
     updateHud();
     showStartHint(firstHintFor(config));
     pauseOverlay.classList.add("hidden");
@@ -263,6 +311,13 @@ SL.UI = (function () {
   function openDaily() {
     const config = SL.Daily.getConfig();
     openSession({ ...config, chapterId: config.chapter }, SL.Daily.getCourse(config), "daily");
+  }
+
+  // Jeder Lauf ist eine neue, zufällige Strecke
+  function openEndless() {
+    endlessRun = SL.Endless.createRun();
+    endlessBanked = new Set();
+    openSession({ name: "Endlos" }, endlessRun.course, "endless");
   }
 
   const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
@@ -331,7 +386,8 @@ SL.UI = (function () {
     session.onCheckpoint = (pl) => {
       SL.Audio.play("checkpoint");
       SL.Haptics.vibrate(25);
-      effects.text(pl.flagX + 10, pl.top - 52, "Checkpoint!");
+      if (currentMode === "endless") onEndlessCheckpoint(pl);
+      else effects.text(pl.flagX + 10, pl.top - 52, "Checkpoint!");
     };
     session.onCoin = (c) => {
       hudCoins.textContent = session.collected.size;
@@ -361,6 +417,30 @@ SL.UI = (function () {
       showStartHint(() => `${pl.kind === "checkpoint" ? "Am Checkpoint" : "Nochmal"} – ${pressWord()} zum Losrollen`);
     };
     session.onFinish = (result) => onFinished(result);
+  }
+
+  // Endlos: Strecke weiterbauen, Zähler hoch, Coins gutschreiben. Coins zählen erst, wenn man sie
+  // bis zum Checkpoint gebracht hat (im Level erst im Ziel) - bei einem Absturz davor liegen sie
+  // wieder auf der Strecke. Jeder Coin ist 1 Coin.
+  function onEndlessCheckpoint(pl) {
+    endlessRun.extend(pl.index);
+    let total;
+    const unlocked = SL.Cosmetics.unlockedBy(() => {
+      total = SL.Endless.addCheckpoint(state);
+      SL.Economy.checkQuests(state);
+    });
+    effects.text(pl.flagX + 10, pl.top - 52, `Checkpoint ${total}!`);
+    for (const cos of unlocked) effects.text(pl.flagX + 10, pl.top - 80, `Neu im Shop: ${cos.name}`);
+    let coins = 0;
+    for (const id of session.collected) {
+      if (endlessBanked.has(id)) continue;
+      endlessBanked.add(id);
+      coins++;
+    }
+    if (coins) {
+      SL.Profile.addCoins(coins);
+      effects.text(pl.flagX + 10, pl.top - 24, `+${coins} Coins`);
+    }
   }
 
   function gameLoop(now) {
@@ -393,6 +473,8 @@ SL.UI = (function () {
         trail,
         hits,
         squash: effects.enabled ? squash : null,
+        skin: playerSkin,
+        trailStyle: playerTrail,
       });
     }
     // Läuft weiter, solange der Spiel-Screen offen ist (auch nach dem Ziel fürs Konfetti)
@@ -404,13 +486,17 @@ SL.UI = (function () {
     if (session.mode !== "air" && session.mode !== "ground") return;
     if (now - lastTrailAt < TRAIL_EVERY_MS) return;
     lastTrailAt = now;
-    trail.push({ x: fig.x, y: fig.y });
+    trail.push({ x: fig.x, y: fig.y, seed: trailSeed++ });
     if (trail.length > TRAIL_LENGTH) trail.shift();
   }
 
   // HUD: Treffsicherheit bisher und welche Sterne damit gerade drin sind. Nur neu schreiben, wenn
   // sich etwas ändert (nicht jeden Frame).
   function updateHud() {
+    if (currentMode === "endless") {
+      updateEndlessHud();
+      return;
+    }
     const acc = session.accuracy();
     const text = SL.formatAccuracy(acc);
     if (text !== lastAccuracyText) {
@@ -429,6 +515,14 @@ SL.UI = (function () {
       void hudStars.offsetWidth;
       hudStars.classList.add("dropped");
     }
+  }
+
+  // Endlos: alle je erreichten Checkpoints groß in der Mitte (statt Treffsicherheit)
+  function updateEndlessHud() {
+    const text = String(state.endless.checkpoints);
+    if (text === lastAccuracyText) return;
+    lastAccuracyText = text;
+    hudAccuracy.innerHTML = `<span class="hud-flag">${FLAG_ICON}</span>${text}`;
   }
 
   function stopGameLoop() {
@@ -455,21 +549,22 @@ SL.UI = (function () {
     const prev = getResult(currentLevelId);
     const reward = SL.Economy.computeReward({
       levelId: currentLevelId,
-      chapterId: currentConfig.chapterId,
       stars: result.stars,
-      falls: result.falls,
       coinsCollected: result.coinsCollected,
-      prevStars: prev ? prev.stars : null,
     });
-    SL.Economy.recordLevelResult(state, currentLevelId, result, reward.total);
-    return { reward, isNewBest: !prev || result.accuracy > prev.bestAccuracy };
+    const endlessBefore = state.endless.unlocked;
+    // Eintragen erledigt evtl. Aufgaben -> Items, die dadurch im Shop neu freigeschaltet sind
+    const unlocked = SL.Cosmetics.unlockedBy(() => SL.Economy.recordLevelResult(state, currentLevelId, result, reward.total));
+    const endlessUnlocked = !endlessBefore && SL.Endless.isUnlocked(state);
+    return { reward, isNewBest: !prev || result.accuracy > prev.bestAccuracy, endlessUnlocked, unlocked };
   }
 
   // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus, der mit der Serie wächst)
   function recordDailyRun(result) {
-    const daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.accuracy, result.stars);
+    let daily;
+    const unlocked = SL.Cosmetics.unlockedBy(() => { daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.accuracy, result.stars); });
     const parts = daily.coins ? [{ label: "Tagesbonus", coins: daily.coins }] : [];
-    return { reward: { parts, total: daily.coins }, isNewBest: daily.isNewBest, daily };
+    return { reward: { parts, total: daily.coins }, isNewBest: daily.isNewBest, daily, unlocked };
   }
 
   const RESULT_TITLES = { 3: "Perfekt!", 2: "Stark!", 1: "Geschafft!" };
@@ -504,6 +599,11 @@ SL.UI = (function () {
       info = `${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
         + (firstClear ? ` · Tagesbonus +${outcome.reward.total}${INLINE_COIN}` : "")
         + `<br>Nächstes Daily in ${SL.Days.timeUntilNext()}`;
+    } else if (outcome.endlessUnlocked) {
+      info = `Alle ${SL.Endless.maxStars()} Sterne! Der <b>Endlosmodus</b> ist frei – ganz unten in der Level-Auswahl.`;
+    }
+    if (outcome.unlocked.length) {
+      info += `${info ? "<br>" : ""}<span class="inline-icon">${STAR_ICON}</span> Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`;
     }
     infoEl.innerHTML = info;
     infoEl.classList.toggle("hidden", !info);
@@ -649,6 +749,7 @@ SL.UI = (function () {
 
   function restartCurrentLevel() {
     if (currentMode === "daily") openDaily();
+    else if (currentMode === "endless") openEndless();
     else if (currentLevelId != null) openGame(currentLevelId);
   }
 
@@ -747,8 +848,16 @@ SL.UI = (function () {
     document.documentElement.style.setProperty("--app-height", `${Math.round(height)}px`);
   }
 
+  // Die Maskottchen (Pause/Ergebnis) tragen den ausgerüsteten Skin (CSS kommt vom Muster des Skins)
+  function applyPlayerLook() {
+    SL.CosmeticsDraw.applyMascotLook(SL.Cosmetics.equipped("skin"));
+  }
+
   function init() {
     state = SL.Storage.load();
+    // Aufgaben für den Shop: auch alles, was vor dem Update schon geschafft war
+    SL.Economy.checkQuests(state);
+    SL.Quests.sync();
     syncViewportHeight();
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
@@ -771,6 +880,11 @@ SL.UI = (function () {
     document.getElementById("btn-next-level").addEventListener("click", goToNextLevel);
     document.getElementById("btn-share").addEventListener("click", shareDaily);
     document.getElementById("level-map").addEventListener("click", (e) => {
+      const endless = e.target.closest("[data-endless]");
+      if (endless) {
+        onEndlessClick(endless);
+        return;
+      }
       const el = e.target.closest("[data-level]");
       if (el) onLevelTileClick(Number(el.dataset.level), el);
     });
@@ -796,10 +910,16 @@ SL.UI = (function () {
     });
     window.addEventListener("pageshow", (e) => {
       if (!e.persisted) return;
+      applyPlayerLook();
       if (menuActive()) refreshMenu();
       else refreshCoinDisplays();
     });
-    SL.Profile.onChange(refreshCoinDisplays);
+    // Coins und Skins können sich auch in einem anderen Tab ändern (Startseite, Shop, anderes Spiel)
+    SL.Profile.onChange(() => {
+      refreshCoinDisplays();
+      applyPlayerLook();
+    });
+    applyPlayerLook();
 
     SL.Settings.init(state, (settings) => {
       effects.enabled = settings.effects;

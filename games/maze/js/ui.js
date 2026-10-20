@@ -63,15 +63,13 @@ SL.UI = (function () {
       const nextTile = document.querySelector(".level-tile.next");
       if (nextTile) nextTile.scrollIntoView({ block: "nearest" });
     }
-    if (id === "screen-shop") renderShop();
-    else stopShopAnimation();
     if (id === "screen-menu") refreshMenu();
   }
 
   // Coins sind spielübergreifend (Profil) - die Anzeigen zeigen also immer den Gesamtstand
   function refreshCoinDisplays() {
     const coins = SL.Profile.coins();
-    for (const id of ["menu-coins", "levels-coins", "shop-coins"]) document.getElementById(id).textContent = coins;
+    for (const id of ["menu-coins", "levels-coins"]) document.getElementById(id).textContent = coins;
     hudCoins.textContent = session ? session.coinsCollected : 0;
   }
 
@@ -80,7 +78,6 @@ SL.UI = (function () {
   const COIN_ICON = `<span class="coin-icon" aria-hidden="true"></span>`;
   const STAR_ICON = `<svg class="icon star-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.05L14.91 9.05L22.46 9.65L16.71 14.58L18.47 21.95L12 18L5.53 21.95L7.29 14.58L1.54 9.65L9.09 9.05Z"/></svg>`;
   const LOCK_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><rect x="5" y="10.5" width="14" height="10.5" rx="2.5"/></svg>`;
-  const CHECK_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   const FLAME_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 3.3-1.3 5-3 6.8C7.3 11 6 12.8 6 15.3 6 18.7 8.7 21.5 12 21.5s6-2.8 6-6.2c0-2.5-1.2-4.3-2.7-5.7.1 1.7-.6 3-1.7 3.6.5-3.9-.4-7.4-1.6-10.7z"/></svg>`;
 
@@ -88,14 +85,6 @@ SL.UI = (function () {
   const INLINE_STAR = `<span class="inline-icon">${STAR_ICON}</span>`;
   const INLINE_COIN = `<span class="inline-icon">${COIN_ICON}</span>`;
   const INLINE_FLAME = `<span class="inline-icon">${FLAME_ICON}</span>`;
-
-  // "Nächste Freischaltung: Zebra bei 32 ★" - verbindet Level-Sterne mit dem Shop
-  function nextUnlockText() {
-    const next = SL.Economy.nextStarUnlock(state);
-    return next
-      ? `Nächste Freischaltung: <b>${next.name}</b> bei ${next.stars}${INLINE_STAR}`
-      : "Alle Cosmetics per Sterne freigeschaltet";
-  }
 
   function starsHtml(count) {
     return [1, 2, 3].map((i) => `<span class="star ${i <= count ? "on" : "off"}">${STAR_ICON}</span>`).join("");
@@ -166,7 +155,7 @@ SL.UI = (function () {
       <div class="summary-progress">
         <div class="summary-stars">${STAR_ICON}<b>${totalStars}</b><span>/ ${maxStars}</span></div>
         <div class="progress"><span style="width:${pct(totalStars, maxStars)}"></span></div>
-        <div class="summary-sub">${completed} von ${SL.LEVELS.length} Level geschafft · ${nextUnlockText()}</div>
+        <div class="summary-sub">${completed} von ${SL.LEVELS.length} Level geschafft</div>
       </div>
       <div class="summary-rule">
         <div class="summary-rule-head">${starsHtml(3)}<b>Felder × ${msPerTile} s</b></div>
@@ -218,149 +207,9 @@ SL.UI = (function () {
     }
   }
 
-  // ---------- SHOP ----------
-  let shopTab = "skin";
-  let shopAnimId = null;
-  const SHOP_TAB_NAMES = { skin: "Skins", trail: "Spuren" };
-
-  // Statuszeile unter dem Namen (jede Kachel hat eine, damit alle gleich aufgebaut sind):
-  // Im Besitz / fehlende Sterne / fehlende Coins / kaufbar
-  function shopTileHtml(cos, coins) {
-    const owned = state.ownedCosmetics.includes(cos.id);
-    const equipped = SL.getEquipped(state, cos.type).id === cos.id;
-    const starLocked = !owned && !SL.Economy.hasStarsFor(state, cos);
-    const missingStars = cos.stars - SL.Economy.totalStars(state);
-    let label = "Ausrüsten";
-    let btnClass = "btn btn-small";
-    let disabled = false;
-    let status = `<span class="shop-status">Im Besitz</span>`;
-    if (equipped) {
-      label = `${CHECK_ICON}Ausgerüstet`;
-      btnClass += " btn-primary is-equipped";
-      disabled = true;
-    } else if (!owned) {
-      label = starLocked ? `${LOCK_ICON}${cos.price}${COIN_ICON}` : `${cos.price}${COIN_ICON}`;
-      disabled = starLocked || coins < cos.price;
-      if (starLocked) {
-        status = `<span class="shop-status is-locked">Ab ${cos.stars}${INLINE_STAR} · noch ${missingStars}</span>`;
-      } else if (coins < cos.price) {
-        status = `<span class="shop-status">Noch ${cos.price - coins}${INLINE_COIN} sammeln</span>`;
-      } else {
-        status = `<span class="shop-status is-ready">Jetzt kaufbar</span>`;
-      }
-    }
-    return `<div class="shop-tile ${equipped ? "equipped" : ""} ${starLocked ? "star-locked" : ""}">
-      <span class="rarity rarity-${cos.rarity}">${SL.RARITIES[cos.rarity].name}</span>
-      <canvas class="shop-preview" data-preview="${cos.id}" aria-hidden="true"></canvas>
-      <div class="shop-name">${cos.name}</div>
-      ${status}
-      <button type="button" class="${btnClass}" data-cosmetic="${cos.id}" ${disabled ? "disabled" : ""}>${label}</button>
-    </div>`;
-  }
-
-  function renderShop() {
-    const root = document.getElementById("shop");
-    const skin = SL.getEquipped(state, "skin");
-    const trail = SL.getEquipped(state, "trail");
-    const ofType = (type) => SL.COSMETICS.filter((c) => c.type === type);
-    const ownedOf = (type) => ofType(type).filter((c) => state.ownedCosmetics.includes(c.id)).length;
-    const ownedTotal = SL.COSMETICS.filter((c) => state.ownedCosmetics.includes(c.id)).length;
-    const coins = SL.Profile.coins();
-
-    root.innerHTML = `
-      <div class="shop-hero">
-        <canvas class="shop-hero-canvas" data-preview="hero" aria-hidden="true"></canvas>
-        <div class="shop-hero-info">
-          <span class="kicker">Dein Look</span>
-          <div class="shop-hero-name">${skin.name}</div>
-          <div class="shop-hero-trail">Spur: ${trail.name}</div>
-          <div class="shop-hero-count">
-            <div class="progress"><span style="width:${Math.round((ownedTotal / SL.COSMETICS.length) * 100)}%"></span></div>
-            <span>${ownedTotal} / ${SL.COSMETICS.length} gesammelt</span>
-          </div>
-          <div class="shop-hero-stars">
-            <span class="shop-hero-stars-total">${STAR_ICON}<b>${SL.Economy.totalStars(state)}</b></span>
-            <span>${nextUnlockText()}</span>
-          </div>
-        </div>
-      </div>
-      <div class="shop-tabs" role="tablist">
-        ${SL.COSMETIC_TYPES.map((type) => `<button type="button" role="tab" class="shop-tab ${type === shopTab ? "active" : ""}" aria-selected="${type === shopTab}" data-tab="${type}">
-          ${SHOP_TAB_NAMES[type]}<span>${ownedOf(type)}/${ofType(type).length}</span>
-        </button>`).join("")}
-      </div>
-      <div class="shop-grid shop-grid-${shopTab}">${ofType(shopTab).map((cos) => shopTileHtml(cos, coins)).join("")}</div>`;
-
-    drawShopPreviews(performance.now(), false);
-    // Animierte Items (Prisma, Funken, Regenbogen) brauchen eine Schleife - nur dann starten
-    const animated = skin.animated || trail.animated || ofType(shopTab).some((c) => c.animated);
-    stopShopAnimation();
-    if (animated) {
-      const tick = (now) => {
-        drawShopPreviews(now, true);
-        shopAnimId = requestAnimationFrame(tick);
-      };
-      shopAnimId = requestAnimationFrame(tick);
-    }
-    refreshCoinDisplays();
-  }
-
-  // Skins: Figur groß. Spuren: Mini-Korridor mit dem ausgerüsteten Skin. Hero: aktueller Look.
-  // onlyAnimated: im Animations-Takt nur die Canvases neu zeichnen, die sich bewegen.
-  function drawShopPreviews(time, onlyAnimated) {
-    const skin = SL.getEquipped(state, "skin");
-    const trail = SL.getEquipped(state, "trail");
-    document.querySelectorAll("#shop canvas[data-preview]").forEach((canvas) => {
-      const id = canvas.dataset.preview;
-      if (id === "hero") {
-        if (!onlyAnimated || skin.animated || trail.animated) SL.Renderer.drawScenePreview(canvas, skin, trail, time);
-        return;
-      }
-      const cos = SL.getCosmetic(id);
-      if (onlyAnimated && !cos.animated && !(cos.type === "trail" && skin.animated)) return;
-      if (cos.type === "skin") SL.Renderer.drawSkinPreview(canvas, cos, time);
-      else SL.Renderer.drawScenePreview(canvas, skin, cos, time);
-    });
-  }
-
-  function stopShopAnimation() {
-    if (shopAnimId) cancelAnimationFrame(shopAnimId);
-    shopAnimId = null;
-  }
-
-  function onShopClick(e) {
-    const tab = e.target.closest("[data-tab]");
-    if (tab) {
-      shopTab = tab.dataset.tab;
-      renderShop();
-      return;
-    }
-    const btn = e.target.closest("button[data-cosmetic]");
-    if (!btn) return;
-    const id = btn.dataset.cosmetic;
-    const buying = !state.ownedCosmetics.includes(id);
-    const ok = buying ? SL.Economy.purchaseCosmetic(state, id) : SL.Economy.equipCosmetic(state, id);
-    if (ok && buying) SL.Audio.play("purchase");
-    if (ok) {
-      applyPlayerLook();
-      renderShop();
-    }
-  }
-
-  // Die Maskottchen (Pause/Ergebnis) tragen den ausgerüsteten Skin - als CSS-Nachbau des Musters
+  // Die Maskottchen (Pause/Ergebnis) tragen den ausgerüsteten Skin (CSS kommt vom Muster des Skins)
   function applyPlayerLook() {
-    const skin = SL.getEquipped(state, "skin");
-    const [c0, c1 = c0] = skin.colors;
-    const background = {
-      split: `linear-gradient(135deg, ${c0} 50%, ${c1} 50%)`,
-      stripes: `repeating-linear-gradient(-45deg, ${c0} 0 5px, ${c1} 5px 9px)`,
-      gradient: `linear-gradient(135deg, ${skin.colors.join(", ")})`,
-      galaxy: `radial-gradient(circle at 35% 30%, ${c1}, ${c0} 70%)`,
-      prism: `conic-gradient(${[...skin.colors, c0].join(", ")})`,
-    }[skin.pattern] || c0;
-    const root = document.documentElement.style;
-    root.setProperty("--player-bg", background);
-    root.setProperty("--player-ring", skin.pattern === "ring" ? `inset 0 0 0 4px ${c1}` : "inset 0 0 0 2px rgba(43, 36, 32, 0.45)");
+    SL.CosmeticsDraw.applyMascotLook(SL.Cosmetics.equipped("skin"));
   }
 
   // Fester quadratischer Ausschnitt (Viewport) - unabhängig von der Maze-Größe,
@@ -411,8 +260,8 @@ SL.UI = (function () {
     pauseOverlay.classList.add("hidden");
     paused = false;
     // Look wird beim Start festgelegt und ändert sich während des Laufs nicht
-    playerSkin = SL.getEquipped(state, "skin");
-    playerTrail = SL.getEquipped(state, "trail");
+    playerSkin = SL.Cosmetics.equipped("skin");
+    playerTrail = SL.Cosmetics.equipped("trail");
     // "Verlassen" führt dorthin zurück, wo man herkam
     document.getElementById("btn-quit").dataset.nav = mode === "daily" ? "screen-menu" : "screen-levels";
 
@@ -557,25 +406,21 @@ SL.UI = (function () {
 
   function recordLevelRun(result) {
     const prev = getResult(currentLevelId);
-    const starsBefore = SL.Economy.totalStars(state);
     const coinsEarned = SL.Economy.computeReward({
       levelId: currentLevelId,
       stars: result.stars,
-      crashCount: result.crashCount,
       coinsCollected: result.coinsCollected,
     });
-    SL.Economy.recordLevelResult(state, currentLevelId, result.timeMs, result.stars, coinsEarned);
-    return {
-      coinsEarned,
-      isNewBest: !prev || result.timeMs < prev.bestTimeMs,
-      unlocked: SL.Economy.cosmeticsUnlockedBetween(starsBefore, SL.Economy.totalStars(state)),
-    };
+    // Eintragen erledigt evtl. Aufgaben -> Items, die dadurch im Shop neu freigeschaltet sind
+    const unlocked = SL.Cosmetics.unlockedBy(() => SL.Economy.recordLevelResult(state, currentLevelId, result.timeMs, result.stars, coinsEarned));
+    return { coinsEarned, isNewBest: !prev || result.timeMs < prev.bestTimeMs, unlocked };
   }
 
   // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus, der mit der Serie wächst)
   function recordDailyRun(result) {
-    const daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.timeMs, result.stars);
-    return { coinsEarned: daily.coins, isNewBest: daily.isNewBest, unlocked: [], daily };
+    let daily;
+    const unlocked = SL.Cosmetics.unlockedBy(() => { daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.timeMs, result.stars); });
+    return { coinsEarned: daily.coins, isNewBest: daily.isNewBest, unlocked, daily };
   }
 
   const RESULT_TITLES = { 3: "Perfekt!", 2: "Stark!", 1: "Geschafft!" };
@@ -597,17 +442,16 @@ SL.UI = (function () {
       ? `${optimalSteps} Felder × ${secPerTile} s = ${formatTime(t3)} – geschafft!`
       : `${optimalSteps} Felder × ${secPerTile} s = ${formatTime(t3)}<br>Für 3 Sterne fehlen noch <b>${formatTime(missingMs)}</b>`;
 
-    // Infozeile: Level -> neu freigeschaltete Cosmetics, Daily -> Serie + nächstes Daily
+    // Infozeile: Daily -> Serie + nächstes Daily; dazu neu im Shop freigeschaltete Items
     const infoEl = document.getElementById("results-unlock");
-    let info = "";
+    const lines = [];
     if (isDaily) {
       const { streak, firstClear } = outcome.daily;
-      info = `${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
-        + (firstClear ? ` · Tagesbonus +${outcome.coinsEarned}${INLINE_COIN}` : "")
-        + `<br>Nächstes Daily in ${SL.Days.timeUntilNext()}`;
-    } else if (outcome.unlocked.length) {
-      info = `${INLINE_STAR} Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`;
+      lines.push(`${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
+        + (firstClear ? ` · Tagesbonus +${outcome.coinsEarned}${INLINE_COIN}` : ""), `Nächstes Daily in ${SL.Days.timeUntilNext()}`);
     }
+    if (outcome.unlocked.length) lines.push(`${INLINE_STAR} Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`);
+    const info = lines.join("<br>");
     infoEl.innerHTML = info;
     infoEl.classList.toggle("hidden", !info);
 
@@ -855,6 +699,9 @@ SL.UI = (function () {
 
   function init() {
     state = SL.Storage.load();
+    // Aufgaben für den Shop: auch alles, was vor dem Update schon geschafft war
+    SL.Economy.checkQuests(state);
+    SL.Quests.sync();
     syncViewportHeight();
     if (window.visualViewport) {
       // Leiste fährt ein/aus -> sichtbare Höhe ändert sich -> Spielfeld neu einpassen
@@ -869,7 +716,6 @@ SL.UI = (function () {
     });
     document.getElementById("btn-play").addEventListener("click", () => showScreen("screen-levels"));
     document.getElementById("btn-daily").addEventListener("click", openDaily);
-    document.getElementById("btn-shop").addEventListener("click", () => showScreen("screen-shop"));
     document.getElementById("btn-settings").addEventListener("click", () => SL.Settings.open());
     document.getElementById("btn-pause").addEventListener("click", togglePause);
     document.getElementById("btn-resume").addEventListener("click", togglePause);
@@ -883,13 +729,12 @@ SL.UI = (function () {
       const el = e.target.closest("[data-level]");
       if (el) onLevelTileClick(Number(el.dataset.level), el);
     });
-    document.getElementById("shop").addEventListener("click", onShopClick);
     bindTapPad();
 
     // Audio darf erst nach einer Nutzer-Geste starten; dazu ein leiser Klick auf Buttons
     document.addEventListener("pointerdown", (e) => {
       SL.Audio.ensure();
-      if (e.target.closest(".btn, .daily-card, .level-tile, .shop-tab, .toggle, .segmented button")) {
+      if (e.target.closest(".btn, .daily-card, .level-tile, .toggle, .segmented button")) {
         SL.Audio.play("click");
       }
     }, true);
@@ -899,7 +744,6 @@ SL.UI = (function () {
     window.addEventListener("resize", () => {
       syncViewportHeight();
       if (isGameActive()) sizeCanvas();
-      if (document.getElementById("screen-shop").classList.contains("active")) drawShopPreviews(performance.now(), false);
     });
     // Tab im Hintergrund -> automatisch pausieren, die Uhr misst ja echte Zeit. Zurück im Tab:
     // Menü neu einlesen, falls inzwischen Mitternacht war (neues Daily).
@@ -911,11 +755,15 @@ SL.UI = (function () {
     // Zurück-Button von der Startseite: Seite kommt evtl. aus dem Cache -> Coins/Menü neu einlesen
     window.addEventListener("pageshow", (e) => {
       if (!e.persisted) return;
+      applyPlayerLook();
       if (menuActive()) refreshMenu();
       else refreshCoinDisplays();
     });
-    // Coins können sich auch in einem anderen Tab ändern (Startseite, anderes Spiel)
-    SL.Profile.onChange(refreshCoinDisplays);
+    // Coins und Skins können sich auch in einem anderen Tab ändern (Startseite, Shop, anderes Spiel)
+    SL.Profile.onChange(() => {
+      refreshCoinDisplays();
+      applyPlayerLook();
+    });
 
     SL.Settings.init(state, (settings) => {
       effects.enabled = settings.effects;

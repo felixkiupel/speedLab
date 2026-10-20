@@ -73,11 +73,6 @@ SL.Daily = (function () {
     return state.daily.results[key] || null;
   }
 
-  // Bonus nur beim ersten Abschluss des Tages: 50 + 50 pro Stern + 10 pro Serien-Tag (max. 100)
-  function bonusFor(stars, streak) {
-    return 50 + stars * 50 + Math.min(streak * 10, 100);
-  }
-
   // Trägt einen Daily-Abschluss ein. Gibt zurück, ob es heute der erste in Maze war, ob es eine
   // neue Bestzeit ist, die aktuelle Serie und die verdienten Coins.
   function recordResult(state, key, timeMs, stars) {
@@ -93,7 +88,7 @@ SL.Daily = (function () {
     // Ob es der erste Abschluss heute ist, entscheidet das Profil - so gibt es den Bonus auch nach
     // "Maze-Fortschritt löschen" nicht ein zweites Mal am selben Tag
     const { firstForGame, streak } = SL.Profile.completeDaily(GAME_ID, key);
-    const coins = firstForGame ? bonusFor(stars, streak) : 0;
+    const coins = firstForGame ? SL.Profile.dailyBonus(stars, streak) : 0;
 
     // Alte Tage aufräumen, damit der Speicherstand nicht endlos wächst
     for (const k of Object.keys(daily.results)) {

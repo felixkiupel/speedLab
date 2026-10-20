@@ -1,7 +1,8 @@
-// Spielübergreifendes Profil: Coins und die tägliche Serie gehören keinem einzelnen Spiel. Coins aus
-// einem Spiel kann man in jedem anderen ausgeben, und die Serie hält, solange man jeden Tag das
-// Daily von irgendeinem Spiel schafft. Alles andere (Level, Skins, Einstellungen) speichert jedes
-// Spiel selbst unter einem eigenen Schlüssel.
+// Spielübergreifendes Profil: Coins, die tägliche Serie, die Skins aus dem Shop und die geschafften
+// Aufgaben (quests.js) gehören keinem einzelnen Spiel. Coins aus einem Spiel kann man in jedem anderen
+// ausgeben, und die Serie hält, solange man jeden Tag das Daily von irgendeinem Spiel schafft.
+// Alles andere (Level, Bestwerte, Einstellungen) speichert jedes Spiel selbst unter einem eigenen
+// Schlüssel.
 //
 // Alle Spielstände liegen unter "speedlab_*": Auf github.io teilen sich alle Projekte eines
 // Accounts denselben localStorage, das Präfix hält sie auseinander.
@@ -19,7 +20,12 @@ SL.Profile = (function () {
 
   function defaults() {
     // dailyLog: { [YYYY-MM-DD]: ["maze", ...] } - welche Spiele an dem Tag ihr Daily geschafft haben
-    return { coins: 0, streak: 0, bestStreak: 0, lastDaily: null, dailyLog: {} };
+    // cosmetics: gekaufte Skins/Spuren + was ausgerüstet ist ({ skin, trail }), siehe cosmetics.js
+    // quests: { [aufgabe]: Zeitpunkt } - geschaffte Aufgaben, siehe quests.js
+    return {
+      coins: 0, streak: 0, bestStreak: 0, lastDaily: null, dailyLog: {},
+      cosmetics: { owned: [], equipped: {} }, quests: {},
+    };
   }
 
   function read() {
@@ -64,6 +70,80 @@ SL.Profile = (function () {
     if (read().coins < amount) return false;
     update((p) => { p.coins -= amount; });
     return true;
+  }
+
+  // ---------- Shop ----------
+  // Nur der Besitz - welche Items es gibt und was sie kosten, steht in cosmetics.js
+
+  function ownedCosmetics() {
+    return read().cosmetics.owned;
+  }
+
+  function equippedCosmetic(type) {
+    return read().cosmetics.equipped[type] || null;
+  }
+
+  // Coins abziehen, Item besitzen und ausrüsten in einem Schritt. false = zu wenig Coins
+  function buyCosmetic(id, type, price) {
+    if (read().coins < price) return false;
+    update((p) => {
+      p.coins -= price;
+      if (!p.cosmetics.owned.includes(id)) p.cosmetics.owned.push(id);
+      p.cosmetics.equipped[type] = id;
+    });
+    return true;
+  }
+
+  function equipCosmetic(id, type) {
+    update((p) => { p.cosmetics.equipped[type] = id; });
+  }
+
+  // Ausgemusterte Items zurücknehmen: refunds = [{ id, coins }]. Wer eins besitzt, bekommt die
+  // Coins zurück, ist es ausgerüstet, gilt wieder der Standard. Läuft bei jedem Laden, tut aber nur
+  // etwas, solange noch so ein Item im Besitz ist.
+  function refundCosmetics(refunds) {
+    const owned = read().cosmetics.owned;
+    const hits = refunds.filter((r) => owned.includes(r.id));
+    if (!hits.length) return;
+    update((p) => {
+      for (const { id, coins } of hits) {
+        p.cosmetics.owned = p.cosmetics.owned.filter((o) => o !== id);
+        p.coins += coins;
+        for (const type of Object.keys(p.cosmetics.equipped)) {
+          if (p.cosmetics.equipped[type] === id) delete p.cosmetics.equipped[type];
+        }
+      }
+    });
+  }
+
+  // ---------- Aufgaben ----------
+  // Nur das Festhalten - welche Aufgaben es gibt und wann sie erfüllt sind, steht in quests.js
+
+  function questDone(id) {
+    return Boolean(read().quests[id]);
+  }
+
+  function completeQuest(id) {
+    if (!questDone(id)) update((p) => { p.quests[id] = Date.now(); });
+  }
+
+  // ---------- Belohnung (für alle Spiele gleich) ----------
+
+  // Coins für einen Level-Lauf, gemessen am Preis des nächsten Levels im selben Spiel: 3 Sterne
+  // reichen direkt zum Freischalten (plus ein paar Coins), mit 2 Sternen braucht man zwei Läufe, mit
+  // 1 Stern drei. Jeder Lauf zahlt gleich, auch Wiederholungen. Eingesammelte Coins kommen extra
+  // dazu, jeder zählt genau 1.
+  const STAR_SHARE = { 2: 0.55, 1: 0.35 };
+  const THREE_STAR_EXTRA = 2;
+  function levelPay(nextLevelCost, stars) {
+    if (stars >= 3) return nextLevelCost + THREE_STAR_EXTRA;
+    return Math.ceil(nextLevelCost * (STAR_SHARE[stars] || 0));
+  }
+
+  // Tagesbonus fürs erste geschaffte Daily eines Spiels am Tag: 10 pro Stern + 1 pro Serien-Tag
+  // (höchstens 10). Ein kleines Extra - Level freischalten soll man sich in den Leveln verdienen.
+  function dailyBonus(stars, streak) {
+    return stars * 10 + Math.min(streak, 10);
   }
 
   // ---------- Daily-Serie ----------
@@ -132,6 +212,7 @@ SL.Profile = (function () {
       }
       if (!localStorage.getItem(KEY)) {
         const p = defaults();
+        delete p.cosmetics; // die Skins holt migrateShop gleich danach aus dem Maze-Spielstand
         p.coins = old.coins || 0;
         p.streak = daily.streak || 0;
         p.bestStreak = daily.bestStreak || 0;
@@ -147,5 +228,29 @@ SL.Profile = (function () {
   }
   migrateLegacy();
 
-  return { coins, addCoins, spend, streak, bestStreak, dailiesOn, completeDaily, onChange };
+  // Einmaliger Umzug, als der Shop aus Maze in alle Spiele wanderte: Gekaufte Skins/Spuren lagen im
+  // Maze-Spielstand - das Profil holt sie sich einmal von dort.
+  function migrateShop() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw && JSON.parse(raw).cosmetics) return;
+      const save = (id) => JSON.parse(localStorage.getItem(`speedlab_${id}_v1`) || "null");
+      const maze = save("maze");
+      update((p) => {
+        p.cosmetics = {
+          owned: (maze && maze.ownedCosmetics) || [],
+          equipped: (maze && maze.equipped) || (maze && maze.equippedCosmetic ? { skin: maze.equippedCosmetic } : {}),
+        };
+      });
+    } catch (e) {
+      console.warn("Skins konnten nicht ins Profil übernommen werden.", e);
+    }
+  }
+  migrateShop();
+
+  return {
+    coins, addCoins, spend, levelPay, dailyBonus,
+    ownedCosmetics, equippedCosmetic, buyCosmetic, equipCosmetic, refundCosmetics, questDone, completeQuest,
+    streak, bestStreak, dailiesOn, completeDaily, onChange,
+  };
 })();

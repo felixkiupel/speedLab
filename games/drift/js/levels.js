@@ -359,6 +359,12 @@ const LEVEL_MAPS = [
   ],
 ];
 
+// Preis zum Freischalten. Die Belohnung eines Levels richtet sich nach dem Preis des nächsten
+// (SL.Profile.levelPay) - darum als Funktion, die auch nach Level 30 weiterrechnet.
+SL.levelUnlockCost = function levelUnlockCost(id) {
+  return id <= 1 ? 0 : 60 + (id - 2) * 15;
+};
+
 SL.LEVELS = LEVEL_MAPS.map((map, i) => {
   const id = i + 1;
   const chapter = SL.CHAPTERS.find((ch) => id >= ch.firstLevel && id <= ch.lastLevel);
@@ -367,9 +373,7 @@ SL.LEVELS = LEVEL_MAPS.map((map, i) => {
     name: `Level ${id}`,
     chapter: chapter.id,
     map,
-    // Kosten wachsen im selben Takt wie die Belohnung (siehe SL.Economy.computeReward): Ein erster
-    // 2-Sterne-Lauf im Level davor reicht fürs nächste, mit 1 Stern muss man nachlegen.
-    unlockCost: id <= 1 ? 0 : 60 + (id - 2) * 15,
+    unlockCost: SL.levelUnlockCost(id),
   };
 });
 

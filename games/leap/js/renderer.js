@@ -9,7 +9,6 @@ const CREAM = "#fbf7f0";
 const GRID_LINE = "#e8e0d2";
 const SOFT = "#ddd3c2";
 const DIM = "#85786a";
-const TRAIL = "#c7bcaa";
 const DANGER = "#c0392b";
 const GRID = 40;
 
@@ -19,7 +18,8 @@ const GOAL_HALF = 1.3; // halbe Seitenlänge des Ziel-Rahmens in Figur-Radien
 
 SL.Renderer = {
   // v: { session, now (performance.now), w, h (Bildschirm-Pixel), scale, pixelRatio, cam {x,y},
-  //      effects, shake {x,y}, flash 0..1, guide (Ring an), trail [{x,y}],
+  //      effects, shake {x,y}, flash 0..1, guide (Ring an), trail [{x,y,seed}],
+  //      skin, trailStyle (ausgerüstet im Shop, shared/js/cosmetics.js),
   //      hits Map(pointId -> Zeit des Absprungs), squash {at, kind: "jump" | "land"} }
   render(ctx, v) {
     const { session, now, w, h, scale: s, pixelRatio: pr, cam } = v;
@@ -88,15 +88,9 @@ SL.Renderer = {
       drawPoint(ctx, p.x, y, p.kind);
     }
 
-    // Spur: zuletzt besuchte Positionen, ausblassend
-    const n = v.trail.length;
-    v.trail.forEach((t, i) => {
-      const a = (i + 1) / n;
-      ctx.fillStyle = hexToRgba(TRAIL, 0.55 * a);
-      ctx.beginPath();
-      ctx.arc(t.x, t.y, L.FIG_R * (0.25 + 0.2 * a), 0, Math.PI * 2);
-      ctx.fill();
-    });
+    // Spur aus dem Shop über die zuletzt besuchten Positionen (Maßstab: etwa zwei Figur-Breiten,
+    // damit die Standard-Punkte so groß sind wie früher die eigene Spur)
+    SL.CosmeticsDraw.drawTrail(ctx, v.trail, L.FIG_R * 2.2, v.trailStyle, v.skin, now);
 
     // Land
     for (const pl of course.platforms) {
@@ -110,7 +104,7 @@ SL.Renderer = {
     const fig = session.figureAt(now);
     const slope = session.slopeAt();
     const body = session.finishedAt != null ? goalBody(L.FIG_R, now - session.finishedAt) : null;
-    drawPlayer(ctx, fig.x, fig.y, L.FIG_R, slope, deform(v.squash, now, slope), body);
+    drawPlayer(ctx, fig.x, fig.y, L.FIG_R, slope, deform(v.squash, now, slope), body, v.skin, now);
 
     // Erschöpfung: kleine Leiste unter der Figur, läuft ab - leer = man kann wieder
     const tired = session.cooldownLeft(now);
@@ -279,23 +273,9 @@ function goalBody(radius, ms) {
   return { half: radius + (half - radius) * m, corner: radius + (corner - radius) * Math.min(1, m) };
 }
 
-function bodyPath(ctx, x, y, r, body) {
-  ctx.beginPath();
-  if (!body) {
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    return;
-  }
-  const { half } = body;
-  const k = Math.max(0, Math.min(body.corner, half));
-  ctx.moveTo(x, y - half);
-  ctx.arcTo(x + half, y - half, x + half, y + half, k);
-  ctx.arcTo(x + half, y + half, x - half, y + half, k);
-  ctx.arcTo(x - half, y + half, x - half, y - half, k);
-  ctx.arcTo(x - half, y - half, x + half, y - half, k);
-  ctx.closePath();
-}
-
-function drawPlayer(ctx, x, y, radius, slope, def, body) {
+// Körper im Skin-Muster + Augen kommen aus shared/js/cosmetics-draw.js, wie im Shop. Die Pupillen
+// schauen in Flugrichtung (Steigung -> Vektor).
+function drawPlayer(ctx, x, y, radius, slope, def, body, skin, now) {
   ctx.save();
   if (def) {
     ctx.translate(x, y);
@@ -310,36 +290,9 @@ function drawPlayer(ctx, x, y, radius, slope, def, body) {
     }
     ctx.translate(-x, -y);
   }
-  bodyPath(ctx, x, y, radius, body);
-  ctx.fillStyle = INK;
-  ctx.fill();
-  drawFace(ctx, x, y, slope, radius);
-  ctx.restore();
-}
-
-// Zwei Augen, die Pupillen schauen in Flugrichtung (Steigung -> Vektor)
-function drawFace(ctx, cx, cy, slope, radius) {
   const len = Math.hypot(1, slope);
-  const dx = 1 / len, dy = slope / len;
-  const shiftX = dx * radius * 0.14;
-  const shiftY = dy * radius * 0.14;
-  const eyeR = radius * 0.32;
-  const pupilR = radius * 0.14;
-  const eyeY = cy - radius * 0.08;
-  for (const side of [-1, 1]) {
-    const eyeX = cx + side * radius * 0.4;
-    ctx.beginPath();
-    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
-    ctx.fillStyle = CREAM;
-    ctx.fill();
-    ctx.lineWidth = Math.max(0.75, radius * 0.05);
-    ctx.strokeStyle = INK;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(eyeX + shiftX, eyeY + shiftY, pupilR, 0, Math.PI * 2);
-    ctx.fillStyle = INK;
-    ctx.fill();
-  }
+  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, skin, { x: 1 / len, y: slope / len }, now, body);
+  ctx.restore();
 }
 
 function drawCooldown(ctx, x, y, left) {
@@ -356,9 +309,15 @@ function drawCooldown(ctx, x, y, left) {
 
 // ---------- Bildschirm ----------
 
-// Fortschritt oben im Spielfeld: dünne Linie vom Start bis zum Ziel, Checkpoints als Striche
+// Fortschritt oben im Spielfeld: dünne Linie vom Start bis zum Ziel, Checkpoints als Striche.
+// Endlos gibt es kein Ziel - dort reicht die Linie vom letzten bis zum nächsten Checkpoint.
 function drawProgress(ctx, session, w) {
-  const { startX, goalX, platforms } = session.course;
+  const { platforms, endless } = session.course;
+  let { startX, goalX } = session.course;
+  if (endless) {
+    startX = platforms[session.respawnIndex].spawnX;
+    goalX = platforms[session.respawnIndex + 1].x0;
+  }
   const x0 = 14, x1 = w - 14, y = 12;
   const at = (x) => x0 + (x1 - x0) * Math.max(0, Math.min(1, (x - startX) / (goalX - startX)));
   ctx.lineCap = "round";
@@ -374,7 +333,7 @@ function drawProgress(ctx, session, w) {
   ctx.lineTo(at(session.fig.x), y);
   ctx.stroke();
   for (const pl of platforms) {
-    if (pl.kind !== "checkpoint") continue;
+    if (endless || pl.kind !== "checkpoint") continue;
     const x = at(pl.x0);
     ctx.fillStyle = session.respawnIndex >= pl.index ? INK : SOFT;
     ctx.fillRect(x - 1.5, y - 5, 3, 10);

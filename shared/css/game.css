@@ -1,7 +1,7 @@
 /* Gemeinsamer Aufbau aller Spielseiten (wird nach base.css geladen): Screens, Menü, Kopfzeile,
    Level-Auswahl, HUD, Pause, Ergebnis, Daily-Karte, Einstellungen, Toast. Was hier steht, sieht in
-   jedem Spiel exakt gleich aus. Alles, was es nur in einem Spiel gibt (Spielfeld-Rahmen, Hinweise,
-   Steuerung, Shop ...), liegt in games/<id>/css/style.css. */
+   jedem Spiel exakt gleich aus (auch die Shop-Seite nutzt Screen und Kopfzeile). Alles, was es nur
+   in einem Spiel gibt (Spielfeld-Rahmen, Hinweise, Steuerung ...), liegt in games/<id>/css/style.css. */
 
 /* Spielseite ohne Seiten-Scrollen: gescrollt wird nur innerhalb der Screens */
 html, body {

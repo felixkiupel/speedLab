@@ -91,29 +91,41 @@ SL.leapTraceArc = function leapTraceArc(course, arc, from, skip) {
 };
 
 // ---------- Generator ----------
-// cfg: { seed, vx, points, checkpoints, kinds: { normal, hop, high, move } (Gewichte), forks,
-//        coinsPerFork, firstGap }
-// Liefert die fertige Strecke; wirft nie - notfalls nimmt er sichere Standardwerte.
-SL.buildCourse = function buildCourse(cfg) {
+// Die Strecke entsteht Abschnitt für Abschnitt: Startplattform, dann je Abschnitt eine Reihe Punkte
+// und am Ende eine Checkpoint-Plattform mit Schanze bzw. das Ziel. buildCourse baut eine Level- oder
+// Daily-Strecke auf einmal, der Endlosmodus (endless.js) hängt beim Spielen immer neue Abschnitte an.
+// Jeder Abschnitt darf sein eigenes Tempo haben - es gilt ab seiner Absprung-Plattform (platform.vx).
+//
+// addSection(cfg) - cfg: { vx, points, forks, kinds: { normal, hop, high, move } (Gewichte),
+//                          coinsPerFork, firstGap, goal }
+// Wirft nie - notfalls nimmt er sichere Standardwerte.
+SL.createCourseBuilder = function createCourseBuilder(seed) {
   const L = SL.LEAP, G = L.G, R = L.FIG_R;
-  const rand = SL.createRng(cfg.seed);
-  const vx = cfg.vx;
-  const gapPx = (vx * L.MIN_GAP_MS) / 1000;
+  const rand = SL.createRng(seed);
   const Y_MIN = -230, Y_MAX = 190; // Strecke bleibt in diesem Höhenband
   const between = (a, b) => a + rand() * (b - a);
 
-  const course = { vx, platforms: [], points: [], coins: [], forks: 0 };
-  const paths = []; // Bögen, die man wirklich fliegt: { arc, from, to }
-  const ghosts = []; // Weiterflug, wenn man einen Punkt verpasst: { arc, from }
+  const course = { vx: null, platforms: [], points: [], coins: [], forks: 0 };
+  let paths = []; // Bögen, die man wirklich fliegt: { arc, from, to }
+  let ghosts = []; // Weiterflug, wenn man einen Punkt verpasst: { arc, from }
+  let sec = null; // laufender Abschnitt: { vx, gapPx, kinds, coinsPerFork }
+  let firstPoint = 0, firstCoin = 0; // ab diesem Index liegen Punkte/Coins des laufenden Abschnitts
 
   const nearPath = (x, y, min) => paths.some((p) => x >= p.from - 4 && x <= p.to + 4 && Math.abs(p.arc.y(x) - y) < min);
   const nearGhost = (x, y, min) => ghosts.some((g) => x >= g.from && x <= g.from + 900 && Math.abs(g.arc.y(x) - y) < min);
-  const nearThing = (x, y, min) =>
-    course.points.some((p) => Math.hypot(p.x - x, p.y - y) < min) ||
-    course.coins.some((c) => Math.hypot(c.x - x, c.y - y) < min);
+  // Nur der laufende Abschnitt: alles davor liegt hinter einer ganzen Plattform, viel zu weit weg
+  function nearThing(x, y, min) {
+    for (let i = firstPoint; i < course.points.length; i++) {
+      if (Math.hypot(course.points[i].x - x, course.points[i].y - y) < min) return true;
+    }
+    for (let i = firstCoin; i < course.coins.length; i++) {
+      if (Math.hypot(course.coins[i].x - x, course.coins[i].y - y) < min) return true;
+    }
+    return false;
+  }
 
   function pickKind(allowed) {
-    const entries = Object.entries(cfg.kinds).filter(([k, w]) => w > 0 && allowed.includes(k));
+    const entries = Object.entries(sec.kinds).filter(([k, w]) => w > 0 && allowed.includes(k));
     if (!entries.length) return "normal";
     let r = rand() * entries.reduce((s, [, w]) => s + w, 0);
     for (const [k, w] of entries) {
@@ -153,7 +165,7 @@ SL.buildCourse = function buildCourse(cfg) {
     const p = { id: course.points.length, x, y, kind, slope, target: null };
     if (kind === "move") {
       const amp = between(22, 36);
-      const wave = vx * between(1.3, 1.9);
+      const wave = sec.vx * between(1.3, 1.9);
       const phase = rand() * Math.PI * 2;
       p.move = { amp, wave, phase, yc: y - amp * Math.sin((2 * Math.PI * x) / wave + phase) };
     }
@@ -210,13 +222,13 @@ SL.buildCourse = function buildCourse(cfg) {
     }
     if (spots.length < 2) return false;
     // zusammenhängende Reihe um die Mitte der möglichen Stellen
-    const want = Math.min(cfg.coinsPerFork || 3, spots.length);
+    const want = Math.min(sec.coinsPerFork || 3, spots.length);
     const start = Math.floor((spots.length - want) / 2);
     for (const s of spots.slice(start, start + want)) course.coins.push({ id: course.coins.length, x: s.x, y: s.y });
 
     A.slope = slopeA;
     // Optik: welche Art Sprung A ist (in Kapitel 1 sehen alle Punkte gleich aus)
-    if (cfg.kinds.high || cfg.kinds.hop) A.kind = slopeA <= -1.75 ? "high" : slopeA >= -1.15 ? "hop" : "normal";
+    if (sec.kinds.high || sec.kinds.hop) A.kind = slopeA <= -1.75 ? "high" : slopeA >= -1.15 ? "hop" : "normal";
     link(A, C);
     course.forks++;
     return true;
@@ -248,27 +260,56 @@ SL.buildCourse = function buildCourse(cfg) {
     return { xLand: Q.x + dLand, x0: Q.x + dLand - 40, top: Q.y - H + R };
   }
 
+  // Abschnitt abschließen: Punkte und Coins nach x sortieren und durchnummerieren (Gabelungen wurden
+  // nachträglich eingefügt), Ziele als Verweis speichern - Punkt { kind: "point", id } oder
+  // Landestelle { kind: "land", x, y, platform }. Frühere Abschnitte liegen komplett weiter links,
+  // ihre Nummern bleiben gültig. from = Plattform, von deren Schanze der Abschnitt abspringt.
+  function finishSection(from) {
+    const points = course.points.splice(firstPoint).sort((a, b) => a.x - b.x);
+    points.forEach((p, i) => { p.id = firstPoint + i; });
+    course.points.push(...points);
+    const coins = course.coins.splice(firstCoin).sort((a, b) => a.x - b.x);
+    coins.forEach((c, i) => { c.id = firstCoin + i; });
+    course.coins.push(...coins);
+    for (const p of points) {
+      if (p.target && p.target.kind !== "land") p.target = { kind: "point", id: p.target.id };
+    }
+    const t = from.launch.target;
+    from.target = t.kind === "land" ? t : { kind: "point", id: t.id };
+    delete from.launch;
+  }
+
   // ---- Aufbau ----
   let pl = addPlatform("start", -340, 0, 0);
   let launch = rampLaunch(pl);
   pl.launch = launch;
-  const segCount = (cfg.checkpoints || 0) + 1;
-  const per = cfg.points / segCount;
-  let forksLeft = cfg.forks || 0;
+  course.startX = pl.spawnX;
   const allKinds = ["normal", "hop", "high", "move"];
 
-  for (let s = 0; s < segCount; s++) {
-    const n = Math.max(2, Math.round(per * (s + 1)) - Math.round(per * s));
+  // Hängt einen Abschnitt an: Punkte ab der letzten Schanze, dann Checkpoint bzw. Ziel. Liefert, wie
+  // viele Gabelungen wirklich entstanden sind.
+  function addSection(cfg) {
+    const n = cfg.points;
+    const gapPx = (cfg.vx * L.MIN_GAP_MS) / 1000;
+    sec = { vx: cfg.vx, gapPx, kinds: cfg.kinds, coinsPerFork: cfg.coinsPerFork };
+    if (course.vx == null) course.vx = cfg.vx;
+    const from = pl;
+    from.vx = cfg.vx; // ab dieser Plattform gilt das Tempo des neuen Abschnitts
+    firstPoint = course.points.length;
+    firstCoin = course.coins.length;
+    // Was komplett hinter der Schanze liegt, kann keinem neuen Punkt mehr im Weg sein
+    paths = paths.filter((p) => p.to + 4 >= launch.x);
+    ghosts = ghosts.filter((g) => g.from + 900 >= launch.x);
+
+    let forksLeft = cfg.forks || 0;
+    let made = 0;
     let fork = null;
-    // Gabelungen gleichmäßig auf die Abschnitte verteilen
-    let segForksLeft = Math.round(forksLeft / (segCount - s));
     for (let i = 0; i < n; i++) {
       const isLast = i === n - 1;
-      const firstOfLevel = s === 0 && i === 0;
       // Gabelung geplant? Dann P weiter weg setzen, damit davor Platz für A ist
-      let wantFork = segForksLeft > 0 && i >= 1 && i <= n - 2 && launch.kind !== "ramp" && launch.slope <= L.JUMPS.normal &&
-        (rand() < 0.6 || n - 2 - i < segForksLeft);
-      const minD = firstOfLevel ? Math.max(gapPx, cfg.firstGap || 0) : gapPx;
+      let wantFork = forksLeft > 0 && i >= 1 && i <= n - 2 && launch.kind !== "ramp" && launch.slope <= L.JUMPS.normal &&
+        (rand() < 0.6 || n - 2 - i < forksLeft);
+      const minD = i === 0 ? Math.max(gapPx, cfg.firstGap || 0) : gapPx;
       let spot = wantFork ? placeOnArc(launch, gapPx * 2.25) : placeOnArc(launch, minD);
       if (wantFork && !spot.ok) {
         // so weit hinten ist kein Platz im Höhenband - dann hier keine Gabelung
@@ -284,7 +325,7 @@ SL.buildCourse = function buildCourse(cfg) {
 
       if (fork) {
         if (!tryFork(fork, P)) course.points.splice(course.points.indexOf(fork.A), 1);
-        else segForksLeft--, forksLeft--;
+        else forksLeft--, made++;
         fork = null;
       }
 
@@ -301,36 +342,43 @@ SL.buildCourse = function buildCourse(cfg) {
     if (fork) course.points.splice(course.points.indexOf(fork.A), 1);
 
     // Plattform am Ende des Abschnitts: Checkpoint mit Schanze bzw. das Ziel
-    const isGoal = s === segCount - 1;
     const spot = placeLanding(launch);
-    const roll = vx * (isGoal ? 0.55 : 0.95);
-    const x1 = isGoal ? spot.xLand + roll + 320 : spot.xLand + roll + L.RAMP_W;
-    pl = addPlatform(isGoal ? "goal" : "checkpoint", spot.x0, x1, spot.top);
-    if (isGoal) pl.goalX = spot.xLand + roll;
+    const roll = cfg.vx * (cfg.goal ? 0.55 : 0.95);
+    const x1 = cfg.goal ? spot.xLand + roll + 320 : spot.xLand + roll + L.RAMP_W;
+    pl = addPlatform(cfg.goal ? "goal" : "checkpoint", spot.x0, x1, spot.top);
+    if (cfg.goal) pl.goalX = spot.xLand + roll;
+    pl.vx = cfg.vx; // bis ein weiterer Abschnitt folgt (der setzt sein eigenes Tempo)
     link(launch, { kind: "land", x: spot.xLand, y: spot.top - R, platform: pl.index });
-    if (!isGoal) {
+    if (!cfg.goal) {
       launch = rampLaunch(pl);
       pl.launch = launch;
     }
+    finishSection(from);
+    return made;
   }
 
-  // Punkte nach x sortieren und neu durchnummerieren (Gabelungen wurden nachträglich eingefügt)
-  course.points.sort((a, b) => a.x - b.x);
-  course.points.forEach((p, i) => { p.id = i; });
-  course.coins.sort((a, b) => a.x - b.x);
-  course.coins.forEach((c, i) => { c.id = i; });
-  // Ziele als Verweis speichern: Punkt oder Landestelle { kind: "land", x, y, platform }
-  for (const p of course.points) {
-    if (p.target && p.target.kind !== "land") p.target = { kind: "point", id: p.target.id };
+  return { course, addSection };
+};
+
+// Level- und Daily-Strecke auf einmal. cfg: { seed, vx, points, checkpoints, kinds, forks,
+// coinsPerFork, firstGap } - Punkte und Gabelungen werden gleichmäßig auf die Abschnitte verteilt.
+SL.buildCourse = function buildCourse(cfg) {
+  const builder = SL.createCourseBuilder(cfg.seed);
+  const segCount = (cfg.checkpoints || 0) + 1;
+  const per = cfg.points / segCount;
+  let forksLeft = cfg.forks || 0;
+  for (let s = 0; s < segCount; s++) {
+    forksLeft -= builder.addSection({
+      vx: cfg.vx,
+      points: Math.max(2, Math.round(per * (s + 1)) - Math.round(per * s)),
+      forks: Math.round(forksLeft / (segCount - s)), // gleichmäßig auf die Abschnitte verteilen
+      kinds: cfg.kinds,
+      coinsPerFork: cfg.coinsPerFork,
+      firstGap: s === 0 ? cfg.firstGap : 0, // nur vor dem allerersten Punkt
+      goal: s === segCount - 1,
+    });
   }
-  for (const plat of course.platforms) {
-    if (plat.launch) {
-      const t = plat.launch.target;
-      plat.target = t.kind === "land" ? t : { kind: "point", id: t.id };
-      delete plat.launch;
-    }
-  }
-  course.startX = course.platforms[0].spawnX;
+  const course = builder.course;
   course.goalX = course.platforms[course.platforms.length - 1].goalX;
   course.jumpCount = countJumps(course);
   return course;

@@ -1,6 +1,8 @@
 // Ein Lauf durch eine Leap-Strecke. Die Figur bewegt sich mit festem Tempo nach rechts - ihre
 // x-Position ergibt sich direkt aus der Lauf-Uhr. Auf Plattformen rollt sie über die Oberfläche, in
-// der Luft folgt sie einem Bogen (SL.leapArc).
+// der Luft folgt sie einem Bogen (SL.leapArc). Das Tempo gehört zum Abschnitt (platform.vx): Es
+// wechselt nur beim Landen auf einer Plattform - in Levels ist es überall gleich, im Endlosmodus
+// hat jeder Abschnitt sein eigenes.
 //
 // Drückt man, während man auf einem Punkt ist, fängt der Punkt die Figur auf und schleudert sie auf
 // dem festen Bogen zum nächsten Ziel. Die Wertung hängt nur davon ab, wie weit (zeitlich) man von der
@@ -32,9 +34,7 @@ SL.leapAccuracy = function leapAccuracy(jumps) {
 
 SL.LeapSession = function LeapSession(course) {
   this.course = course;
-  this.vx = course.vx;
-  this.gravity = SL.LEAP.G * course.vx * course.vx; // px/s² für den freien Fall an der Wand
-  this.okPx = (course.vx * SL.LEAP.WINDOW_MS.ok) / 1000;
+  this.vx = course.vx; // aktuelles Tempo (px/s)
 
   // Lauf-Uhr: steht beim Warten am Start/Checkpoint und in der Pause
   this.elapsed = 0;
@@ -99,6 +99,7 @@ SL.LeapSession.prototype._spawn = function _spawn() {
   const pl = this.course.platforms[this.respawnIndex];
   this.mode = "wait";
   this.platform = pl;
+  this.vx = pl.vx || this.course.vx;
   this.arc = null;
   this.trace = null;
   this.wall = null;
@@ -133,7 +134,7 @@ SL.LeapSession.prototype._fly = function _fly(x, y, target, t) {
   this.trace = SL.leapTraceArc(this.course, this.arc, x, this.used);
   const last = this.trace.candidates[this.trace.candidates.length - 1];
   // Ab hier ist man an allen Punkten vorbei (außer der Bogen endet ohnehin auf einer Plattform)
-  this.lostX = last ? last.x + this.okPx + 6 : Infinity;
+  this.lostX = last ? last.x + (this.vx * SL.LEAP.WINDOW_MS.ok) / 1000 + 6 : Infinity;
   this.target = to;
   this.x0 = x;
   this.t0 = t;
@@ -189,7 +190,8 @@ SL.LeapSession.prototype.update = function update(now) {
   if (this.mode === "lost") {
     if (this.wall) {
       const s = (t - this.wall.t) / 1000;
-      this.fig = { x: this.wall.x, y: this.wall.y + 0.5 * this.gravity * s * s };
+      const gravity = SL.LEAP.G * this.vx * this.vx; // px/s², passt zur Krümmung der Bögen
+      this.fig = { x: this.wall.x, y: this.wall.y + 0.5 * gravity * s * s };
     } else {
       const end = this.trace && this.trace.end;
       if (end && end.type === "wall" && x >= end.x) {
@@ -224,7 +226,7 @@ SL.LeapSession.prototype.update = function update(now) {
     const end = this.trace.end;
     const landing = end && end.type === "land";
     if (landing && x >= end.x) {
-      this._land(end.platform);
+      this._land(end.platform, x, t);
       this.fig = { x, y: SL.leapGroundY(end.platform, x) };
     } else if ((!landing && x > this.lostX) || (end && end.type === "wall" && x >= end.x)) {
       this._lose(t);
@@ -237,8 +239,14 @@ SL.LeapSession.prototype.update = function update(now) {
   this._collectCoins(prevX, this.fig.x, this.fig.y);
 };
 
-// Landen: x läuft einfach weiter, nur die Höhe kommt jetzt von der Oberfläche
-SL.LeapSession.prototype._land = function _land(platform) {
+// Landen: x läuft einfach weiter, nur die Höhe kommt jetzt von der Oberfläche. Hat die Plattform
+// ein anderes Tempo (neuer Abschnitt), rollt die Figur ab hier damit weiter. x, t = Landestelle.
+SL.LeapSession.prototype._land = function _land(platform, x, t) {
+  if (platform.vx && platform.vx !== this.vx) {
+    this.x0 = x;
+    this.t0 = t;
+    this.vx = platform.vx;
+  }
   this.mode = "ground";
   this.platform = platform;
   this.arc = null;

@@ -13,13 +13,6 @@ const STAR_ALLOWANCE = {
 };
 SL.STAR_ALLOWANCE = STAR_ALLOWANCE;
 
-// So viel ist ein eingesammelter Coin wert: 5 in Kapitel 1, 8 in Kapitel 2, 11 in Kapitel 3. Die
-// Umweg-Coins kosten Züge und damit Zeit - ob sich das lohnt, hängt an den Sternen.
-SL.coinValue = function coinValue(levelId) {
-  const level = SL.getLevel(levelId);
-  return 5 + 3 * ((level ? level.chapter : 1) - 1);
-};
-
 SL.Economy = {
   isLevelUnlocked(state, levelId) {
     return state.unlockedLevels.includes(levelId);
@@ -56,23 +49,24 @@ SL.Economy = {
     return 1;
   },
 
-  // Belohnung skaliert mit dem Level und hat zwei Teile:
-  //   pro Lauf      Grundbetrag (10 + 3 × Level), 3 Sterne verdoppeln ihn, 2 Sterne +50 %,
-  //                 Ideallösung (kein Zug zu viel) +5 + Level, jeder Coin je nach Kapitel 5/8/11
-  //   einmalig      erster Abschluss (10 + 4 × Level) und jeder neue Bestwert-Stern (8 + 3 × Level)
-  // Wiederholen lohnt sich also, aber Fortschritt lohnt sich mehr. Liefert die Einzelposten, damit
-  // das Ergebnis zeigen kann, wofür es Coins gab.
-  computeReward({ levelId, stars, moves, minMoves, coinsCollected, prevStars }) {
-    const base = 10 + 3 * levelId;
-    const parts = [{ label: "Geschafft", coins: base }];
-    if (stars === 3) parts.push({ label: "3 Sterne", coins: base });
-    else if (stars === 2) parts.push({ label: "2 Sterne", coins: Math.round(base / 2) });
-    if (moves === minMoves) parts.push({ label: "Ideallösung", coins: 5 + levelId });
-    if (coinsCollected) parts.push({ label: `${coinsCollected} × Coin`, coins: coinsCollected * SL.coinValue(levelId) });
-    if (prevStars == null) parts.push({ label: "Erster Abschluss", coins: 10 + 4 * levelId });
-    const newStars = stars - (prevStars || 0);
-    if (newStars > 0) parts.push({ label: `${newStars === 1 ? "Neuer Stern" : `${newStars} neue Sterne`}`, coins: newStars * (8 + 3 * levelId) });
+  // Belohnung: die Sterne zahlen sich am Preis des nächsten Levels aus (3 Sterne = reicht direkt,
+  // siehe SL.Profile.levelPay), dazu jeder eingesammelte Coin 1:1. Die Umweg-Coins kosten Züge und
+  // damit Zeit - ob sich das lohnt, hängt an den Sternen. Liefert die Einzelposten, damit das
+  // Ergebnis zeigen kann, wofür es Coins gab.
+  computeReward({ levelId, stars, coinsCollected }) {
+    const parts = [{ label: stars === 1 ? "1 Stern" : `${stars} Sterne`, coins: SL.Profile.levelPay(SL.levelUnlockCost(levelId + 1), stars) }];
+    if (coinsCollected) parts.push({ label: `${coinsCollected} × Coin`, coins: coinsCollected });
     return { parts, total: parts.reduce((sum, p) => sum + p.coins, 0) };
+  },
+
+  // Aufgaben für den Shop (shared/js/quests.js), die nur Drift kennt. Geprüft wird aus dem
+  // Spielstand - so zählen auch Lösungen von früher. Beim Start und nach jedem Level.
+  checkQuests(state) {
+    const results = SL.LEVELS.map((level) => ({ level, r: state.levelResults[String(level.id)] }));
+    if (!SL.Quests.isDone("drift-ideal") && results.some(({ level, r }) => r && r.bestMoves === SL.getLevelPuzzle(level.id).analysis.minMoves)) {
+      SL.Quests.complete("drift-ideal");
+    }
+    if (results.every(({ r }) => r && r.stars === 3)) SL.Quests.complete("drift-all");
   },
 
   // Trägt ein Run-Ergebnis ein: Coins werden immer gutgeschrieben, Bestwerte nur verbessert
@@ -86,6 +80,7 @@ SL.Economy = {
       timesPlayed: (prev?.timesPlayed || 0) + 1,
     };
     SL.Storage.save(state);
+    this.checkQuests(state);
     SL.Profile.addCoins(coinsEarned);
   },
 };

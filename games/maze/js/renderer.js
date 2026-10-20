@@ -8,9 +8,7 @@ const COLOR_WALL = "#2b2420";
 const COLOR_GRID_LINE = "#e8e0d2";
 const COLOR_GOAL = "#2b2420";
 const COLOR_COIN = "#2b2420";
-const COLOR_TRAIL = "#c7bcaa";
 const COLOR_DANGER = "#c0392b";
-const COLOR_SPARK = "#f2a900";
 
 const GOAL_HALF = 0.32; // halbe Seitenlänge des Ziel-Rahmens in Feldgrößen (Mitte der Linie)
 const goalLineWidth = (cellSize) => Math.max(2, cellSize * 0.1);
@@ -118,7 +116,7 @@ SL.Renderer = {
       const [x, y] = toScreen(t.c * cellSize + cellSize / 2, t.r * cellSize + cellSize / 2);
       return { x, y, seed: t.r * 31 + t.c * 17 };
     });
-    drawTrail(ctx, points, cellSize, trailStyle, skin, time);
+    SL.CosmeticsDraw.drawTrail(ctx, points, cellSize, trailStyle, skin, time);
 
     // Spieler: immer exakt in der Canvas-Mitte. Die Pupillen schauen in "direction",
     // die Richtung des letzten erfolgreichen Schritts. Im Ziel wird er zum Quadrat.
@@ -136,70 +134,6 @@ SL.Renderer = {
     }
   },
 };
-
-// ---------- Shop-Vorschauen ----------
-// Zeichnen mit denselben Funktionen wie das Spiel, damit der Shop exakt zeigt, was man bekommt.
-
-// Canvas auf seine CSS-Größe × devicePixelRatio bringen, Kontext in CSS-Pixeln zurückgeben
-function prepareCanvas(canvas) {
-  const ratio = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (canvas.width !== Math.round(w * ratio) || canvas.height !== Math.round(h * ratio)) {
-    canvas.width = Math.round(w * ratio);
-    canvas.height = Math.round(h * ratio);
-  }
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  return { ctx, w, h };
-}
-
-// Mini-Korridor in Spielgröße (max. 40px pro Feld): ein Weg-Streifen mit schmalen Wandkanten
-// oben/unten, die Spur läuft von links auf die Figur zu. Spur + Figur stehen zusammen mittig.
-const TRAIL_PREVIEW_LENGTH = 6;
-
-function drawCorridorScene(canvas, skin, trail, time) {
-  const { ctx, w, h } = prepareCanvas(canvas);
-  const n = TRAIL_PREVIEW_LENGTH;
-  const cell = Math.min(w / (n + 0.5), h / 1.7, 40);
-  const pathTop = (h - cell) / 2;
-  const wall = Math.min(cell * 0.5, pathTop);
-  const playerX = w / 2 + ((n - 1) * cell) / 2;
-  const y = pathTop + cell / 2;
-
-  ctx.fillStyle = COLOR_WALL;
-  ctx.fillRect(0, pathTop - wall, w, wall);
-  ctx.fillRect(0, pathTop + cell, w, wall);
-  ctx.fillStyle = COLOR_BG;
-  ctx.fillRect(0, pathTop, w, cell);
-  // Gitterlinien auf die Zellgrenzen rund um die Spur ausrichten
-  ctx.strokeStyle = COLOR_GRID_LINE;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = playerX + cell / 2; x > 0; x -= cell) {
-    ctx.moveTo(Math.round(x) + 0.5, pathTop);
-    ctx.lineTo(Math.round(x) + 0.5, pathTop + cell);
-  }
-  for (let x = playerX + cell * 1.5; x < w; x += cell) {
-    ctx.moveTo(Math.round(x) + 0.5, pathTop);
-    ctx.lineTo(Math.round(x) + 0.5, pathTop + cell);
-  }
-  ctx.stroke();
-
-  const points = [];
-  for (let i = 0; i < n; i++) {
-    points.push({ x: playerX - (n - 1 - i) * cell, y, seed: i * 17 + 3 });
-  }
-  drawTrail(ctx, points, cell, trail, skin, time);
-  drawPlayer(ctx, playerX, y, cell * 0.3, skin, "E", time);
-}
-
-SL.Renderer.drawSkinPreview = function drawSkinPreview(canvas, skin, time = 0) {
-  const { ctx, w, h } = prepareCanvas(canvas);
-  drawPlayer(ctx, w / 2, h / 2, Math.min(w, h) * 0.36, skin, null, time);
-};
-
-SL.Renderer.drawScenePreview = drawCorridorScene;
 
 // ---------- Figur ----------
 
@@ -225,26 +159,10 @@ function goalBody(radius, cellSize, ms) {
   };
 }
 
-// Pfad der Figur: Kreis, oder mit body das Quadrat mit runden Ecken (corner >= half = Kreis)
-function bodyPath(ctx, x, y, r, body) {
-  ctx.beginPath();
-  if (!body) {
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    return;
-  }
-  const { half } = body;
-  const k = Math.max(0, Math.min(body.corner, half));
-  ctx.moveTo(x, y - half);
-  ctx.arcTo(x + half, y - half, x + half, y + half, k);
-  ctx.arcTo(x + half, y + half, x - half, y + half, k);
-  ctx.arcTo(x - half, y + half, x - half, y - half, k);
-  ctx.arcTo(x - half, y - half, x + half, y - half, k);
-  ctx.closePath();
-}
-
 // squash (0..1): direkt nach einem Schritt wird die Figur kurz in Laufrichtung gestreckt und
 // quer dazu gestaucht - gibt dem "Teleport" pro Feld einen spürbaren Ruck. body: Form im Ziel
-// (goalBody), sonst Kreis.
+// (goalBody), sonst Kreis. Körper im Skin-Muster + Augen kommen aus shared/js/cosmetics-draw.js,
+// genau wie im Shop.
 function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0, body = null) {
   const d = direction ? SL.DIRS[direction] : null;
   const k = d ? squash * 0.22 : 0;
@@ -255,8 +173,7 @@ function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0, body =
     ctx.scale(horizontal ? 1 + k : 1 - k * 0.6, horizontal ? 1 - k * 0.6 : 1 + k);
     ctx.translate(-x, -y);
   }
-  fillBody(ctx, x, y, radius, skin, time, body);
-  drawFace(ctx, x, y, direction, radius);
+  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, skin, d ? { x: d.dc, y: d.dr } : null, time, body);
   ctx.restore();
 }
 
@@ -285,211 +202,6 @@ function drawFlag(ctx, x, y, cellSize, reached) {
     ctx.fillStyle = COLOR_BG;
     ctx.fill();
     ctx.stroke();
-  }
-}
-
-// Feste "Sterne" für den Galaxie-Skin: [dx, dy, Größe] relativ zum Radius
-const GALAXY_STARS = [[-0.45, 0.35, 0.07], [0.5, -0.1, 0.06], [0.15, 0.55, 0.05], [-0.1, -0.55, 0.045], [0.55, 0.42, 0.04], [-0.62, -0.15, 0.04]];
-
-// Füllt den Körper je nach Skin-Muster. Alles wird auf die Form geclippt (Kreis, im Ziel das
-// Quadrat), danach kommt eine feine dunkle Kontur, damit helle Skins auf dem cremefarbenen Weg
-// nicht verschwimmen. Muster richten sich nach der halben Breite der Form.
-function fillBody(ctx, x, y, radius, skin, time, body = null) {
-  const colors = skin.colors;
-  const [c0, c1 = c0, c2 = c1] = colors;
-  const r = body ? body.half : radius;
-  ctx.save();
-  bodyPath(ctx, x, y, radius, body);
-  ctx.fillStyle = c0;
-  ctx.fill();
-  ctx.clip();
-
-  switch (skin.pattern) {
-    case "split": {
-      // Diagonal geteilt: untere rechte Hälfte in der zweiten Farbe
-      ctx.fillStyle = c1;
-      ctx.beginPath();
-      ctx.moveTo(x + r, y - r);
-      ctx.lineTo(x + r, y + r);
-      ctx.lineTo(x - r, y + r);
-      ctx.closePath();
-      ctx.fill();
-      break;
-    }
-    case "stripes": {
-      ctx.strokeStyle = c1;
-      ctx.lineWidth = r * 0.3;
-      ctx.beginPath();
-      for (let o = -2 * r; o <= 2 * r; o += r * 0.66) {
-        ctx.moveTo(x + o - r, y + r);
-        ctx.lineTo(x + o + r, y - r);
-      }
-      ctx.stroke();
-      break;
-    }
-    case "ring": {
-      // Band entlang des Rands: doppelt so breit gezogen, die Hälfte außen schneidet der Clip weg
-      ctx.lineWidth = r * 0.44;
-      ctx.strokeStyle = c1;
-      bodyPath(ctx, x, y, radius, body);
-      ctx.stroke();
-      break;
-    }
-    case "gradient": {
-      const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
-      colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-      break;
-    }
-    case "galaxy": {
-      const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.05, x, y, r);
-      g.addColorStop(0, c1);
-      g.addColorStop(1, c0);
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-      ctx.fillStyle = c2;
-      for (const [dx, dy, s] of GALAXY_STARS) {
-        ctx.beginPath();
-        ctx.arc(x + dx * r, y + dy * r, Math.max(0.8, r * s), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      break;
-    }
-    case "prism": {
-      // Farbkreis, der sich langsam dreht (Fallback ohne Conic-Gradient: Verlauf, der rotiert)
-      const angle = (time || 0) * 0.0012;
-      let g;
-      if (ctx.createConicGradient) {
-        g = ctx.createConicGradient(angle, x, y);
-        [...colors, colors[0]].forEach((c, i) => g.addColorStop(i / colors.length, c));
-      } else {
-        g = ctx.createLinearGradient(x + Math.cos(angle) * r, y + Math.sin(angle) * r, x - Math.cos(angle) * r, y - Math.sin(angle) * r);
-        colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
-      }
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-      break;
-    }
-    default:
-      break; // solid: Grundfüllung reicht
-  }
-  ctx.restore();
-
-  if (skin.pattern !== "ring") {
-    bodyPath(ctx, x, y, radius, body);
-    ctx.lineWidth = Math.max(1, radius * 0.07);
-    ctx.strokeStyle = "rgba(43, 36, 32, 0.55)";
-    ctx.stroke();
-  }
-}
-
-// ---------- Spuren ----------
-
-// Farbe für farbige Spuren: explizite Akzentfarbe des Skins, sonst seine Hauptfarbe
-function skinAccent(skin) {
-  return skin.accent || skin.colors[0];
-}
-
-// points: Bildschirmkoordinaten, ältester Punkt zuerst; der letzte liegt unter der Figur.
-// a = 0..1 (Alter, 1 = neuester), damit alle Stile gleichmäßig ausblenden.
-function drawTrail(ctx, points, cellSize, trail, skin, time) {
-  const n = points.length;
-  if (!n) return;
-  const tint = skinAccent(skin);
-  const t = time || 0;
-
-  if (trail.style === "line") {
-    ctx.lineCap = "round";
-    for (let i = 1; i < n; i++) {
-      const a = (i + 1) / n;
-      ctx.strokeStyle = hexToRgba(tint, 0.65 * a);
-      ctx.lineWidth = cellSize * (0.06 + 0.2 * a);
-      ctx.beginPath();
-      ctx.moveTo(points[i - 1].x, points[i - 1].y);
-      ctx.lineTo(points[i].x, points[i].y);
-      ctx.stroke();
-    }
-    return;
-  }
-
-  for (let i = 0; i < n; i++) {
-    const { x, y, seed } = points[i];
-    const a = (i + 1) / n;
-    switch (trail.style) {
-      case "tint":
-        ctx.fillStyle = hexToRgba(tint, 0.6 * a);
-        circle(ctx, x, y, cellSize * 0.18);
-        break;
-      case "pixels": {
-        const s = cellSize * (0.14 + 0.16 * a);
-        ctx.fillStyle = hexToRgba(tint, 0.7 * a);
-        ctx.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), Math.round(s), Math.round(s));
-        break;
-      }
-      case "sparks": {
-        // Vierzackige Funken, pro Feld fest gedreht + leichtes Funkeln über die Zeit
-        const twinkle = 0.85 + 0.15 * Math.sin(t * 0.008 + seed);
-        ctx.fillStyle = hexToRgba(COLOR_SPARK, 0.95 * a);
-        drawSpark(ctx, x, y, cellSize * (0.12 + 0.16 * a) * twinkle, seed * 0.7);
-        break;
-      }
-      case "rainbow": {
-        const hue = (i * 40 + t * 0.12) % 360;
-        ctx.fillStyle = `hsla(${hue}, 85%, 62%, ${0.8 * a})`;
-        circle(ctx, x, y, cellSize * (0.12 + 0.08 * a));
-        break;
-      }
-      default: // "dots": dezente graue Punkte
-        ctx.fillStyle = hexToRgba(COLOR_TRAIL, 0.5 * a);
-        circle(ctx, x, y, cellSize * 0.18);
-    }
-  }
-}
-
-function circle(ctx, x, y, r) {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawSpark(ctx, x, y, r, rotation) {
-  const inner = r * 0.32;
-  ctx.beginPath();
-  for (let k = 0; k < 8; k++) {
-    const ang = rotation + (k * Math.PI) / 4;
-    const rad = k % 2 === 0 ? r : inner;
-    const px = x + Math.cos(ang) * rad, py = y + Math.sin(ang) * rad;
-    if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-  ctx.fill();
-}
-
-// Zwei einfache Augen, Pupillen verschieben sich Richtung "direction" (SL.DIRS-Vektor, kein
-// eigenes Winkel-Mapping nötig). Ohne Richtung schauen sie zentriert geradeaus. Die feine
-// Kontur hält das Augenweiß auch auf hellen Skins (Geist, Zebra) sichtbar.
-function drawFace(ctx, cx, cy, direction, radius) {
-  const d = direction ? SL.DIRS[direction] : null;
-  const shiftX = d ? d.dc * radius * 0.14 : 0;
-  const shiftY = d ? d.dr * radius * 0.14 : 0;
-  const eyeR = radius * 0.32;
-  const pupilR = radius * 0.14;
-  const eyeY = cy - radius * 0.08;
-
-  for (const side of [-1, 1]) {
-    const eyeX = cx + side * radius * 0.4;
-    ctx.beginPath();
-    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
-    ctx.fillStyle = COLOR_BG;
-    ctx.fill();
-    ctx.lineWidth = Math.max(0.75, radius * 0.05);
-    ctx.strokeStyle = COLOR_WALL;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(eyeX + shiftX, eyeY + shiftY, pupilR, 0, Math.PI * 2);
-    ctx.fillStyle = COLOR_WALL;
-    ctx.fill();
   }
 }
 

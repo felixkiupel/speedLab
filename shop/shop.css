@@ -1,0 +1,189 @@
+/* Shop - spielübergreifend: Skins und Spuren für die Figur (Katalog: shared/js/cosmetics.js).
+   Seiten-Gerüst (Screen, Kopfzeile, Sterne-Icon) und die Köpfe der Abteilungen (wie die Kapitel in
+   der Level-Auswahl) aus shared/css/game.css, Farben, Buttons, Coins und Fortschrittsbalken aus
+   shared/css/base.css - beide werden vorher geladen. */
+
+/* Alles auf einer Seite: Dein Look, darunter je Kategorie eine Abteilung */
+.shop {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  padding-bottom: 32px;
+}
+.shop-section { display: flex; flex-direction: column; gap: 16px; }
+
+/* Kopfzeile bleibt beim Scrollen oben stehen - Coins hat man beim Einkaufen immer im Blick. Sie
+   reicht bis an den oberen Rand (über das Padding des Screens), damit ihr Hintergrund die Kacheln
+   abdeckt, die darunter durchscrollen; die feine Linie kommt erst beim Scrollen (shop.js). */
+.shop-topbar {
+  position: sticky;
+  top: calc(-1 * max(16px, env(safe-area-inset-top)));
+  z-index: 2;
+  margin-top: calc(-1 * max(16px, env(safe-area-inset-top)));
+  padding-top: calc(max(16px, env(safe-area-inset-top)) + 10px);
+  background: var(--bg);
+  transition: box-shadow 0.15s ease;
+}
+.shop-topbar.scrolled { box-shadow: 0 1px 0 var(--border-soft); }
+
+/* Aktueller Look: Live-Vorschau (Skin + Spur im Mini-Korridor) + Sammelfortschritt */
+.shop-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  padding: 18px 24px 18px 18px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+.shop-hero-canvas { display: block; width: 100%; height: 120px; border-radius: 10px; }
+.shop-hero-info { display: flex; flex-direction: column; gap: 4px; }
+.shop-hero-name { font-size: 1.7rem; font-weight: 700; line-height: 1.15; }
+.shop-hero-trail { font-size: 0.92rem; color: var(--text-dim); }
+.shop-hero-count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.shop-hero-count .progress { flex: 1; height: 6px; }
+.shop-hero-quests {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+.shop-hero-quests-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.95rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.shop-hero-quests-total .icon { font-size: 0.95rem; }
+.shop-hero-quests-total span { font-size: 0.75rem; color: var(--text-dim); }
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+/* Spuren brauchen Breite, damit man den Effekt über mehrere Felder sieht */
+.shop-grid-trail { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.shop-grid-trail .shop-preview { height: 72px; }
+.shop-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 38px 14px 14px;
+  background: var(--bg);
+  border: 2px solid var(--border-soft);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.shop-tile.equipped { border-color: var(--ink); box-shadow: 0 0 0 5px rgba(43, 36, 32, 0.1); }
+.shop-preview { display: block; width: 100%; height: 76px; }
+.shop-name { font-weight: 600; }
+/* Statuszeile: Im Besitz / Noch X Coins / Jetzt kaufbar */
+/* Normaler Textfluss statt Flex: Flexbox würde die Leerzeichen rund um das Stern-Icon schlucken */
+.shop-status {
+  display: block;
+  height: 16px;
+  line-height: 16px;
+  margin-top: -5px;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.shop-status.is-locked { color: var(--text); font-weight: 700; }
+.shop-status.is-ready { color: var(--text); font-weight: 600; }
+/* Noch gesperrt: ausgegrautes Fragezeichen statt Vorschau, Name verborgen, darunter die Aufgabe
+   (bei Legendär/Mythisch nur "???"). Gleiche Höhe wie eine Vorschau, damit die Kacheln fluchten. */
+.shop-mystery {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 76px;
+}
+.shop-mystery span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--border-soft);
+  color: var(--bg);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+/* Spuren: grauer Streifen mit Fragezeichen, so breit wie die Korridor-Vorschau */
+.shop-grid-trail .shop-mystery { height: 72px; }
+.shop-mystery-trail span { width: 100%; height: 36px; border-radius: 999px; font-size: 1.4rem; }
+.shop-tile.locked { border-style: dashed; }
+.shop-tile.locked .shop-name { color: var(--text-dim); letter-spacing: 0.1em; }
+.shop-quest {
+  display: block;
+  min-height: 2.6em;
+  margin-top: -5px;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--text);
+  text-wrap: balance;
+}
+/* Buttons sitzen in jeder Kachel unten, auch wenn die Aufgabe zweizeilig ist */
+.shop-tile .btn { width: 100%; margin-top: auto; }
+/* Ausgerüstet ist ein positiver Zustand, kein ausgegrauter "geht nicht"-Button */
+.shop-tile .btn.is-equipped:disabled { opacity: 1; cursor: default; }
+.shop-tile .btn.is-equipped:disabled:hover { background: var(--ink); color: var(--bg); }
+
+/* Seltenheit: je seltener, desto kräftiger. Mittig oben in der Kachel. */
+.rarity {
+  position: absolute;
+  top: 11px;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin: 0 auto;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px 0 calc(9px + 0.07em); /* gleicht das trailing letter-spacing aus */
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.rarity-common { color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--border-soft); }
+.rarity-rare { color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.rarity-epic { background: var(--ink); color: var(--bg); }
+.rarity-legendary { background: linear-gradient(90deg, #ffd166, #ff8a5c, #ff6fa5, #b084ff); color: var(--ink); }
+/* Mythisch: Holo-Silber wie die Sterne eines 100-%-Levels */
+.rarity-mythic { background: linear-gradient(110deg, #a6b3cb, #e4efff 35%, #ffffff 50%, #e4ddff 62%, #d1f1eb 78%, #a6b3cb); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(43, 36, 32, 0.18); }
+.rarity-default { color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--border-soft); }
+
+@media (max-width: 640px) {
+  .shop-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-grid-trail { grid-template-columns: minmax(0, 1fr); }
+}

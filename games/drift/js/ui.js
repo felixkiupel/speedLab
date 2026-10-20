@@ -27,6 +27,9 @@ SL.UI = (function () {
   let highlight = null; // Feldtyp, der als "Neu" pulsiert (bis zum ersten Zug)
   let introStart = null; // Beginn der Brett-Einblendung
   let marks = []; // Rutscher, die einen Schweif hinter sich herziehen
+  let trail = []; // zuletzt überrutschte Felder [{r, c, seed}] für die Spur aus dem Shop
+  let playerSkin = null; // ausgerüsteter Skin + Spur, beim Start des Laufs festgelegt
+  let playerTrail = null;
   let goalFlashAt = null; // übers Ziel gerutscht
   let hit = null; // zuletzt getroffener Fels / Rand
   let passHintShown = false;
@@ -285,6 +288,9 @@ SL.UI = (function () {
     boardH = cell * board.rows;
     canvas.style.width = boardW + "px";
     canvas.style.height = boardH + "px";
+    // Innen so rund wie ein Fels in der Ecke (Abstand zum Feldrand + seine Rundung), außen
+    // kommt die Rahmendicke dazu - sonst ist die Bande außen rund und innen fast eckig
+    canvas.style.borderRadius = `${Math.round(cell * 0.24) + border / 2}px`;
     canvas.width = Math.round(boardW * pixelRatio);
     canvas.height = Math.round(boardH * pixelRatio);
     floorLayer = SL.Renderer.buildFloorLayer(board, cell, pixelRatio);
@@ -305,6 +311,9 @@ SL.UI = (function () {
     session = new SL.GameSession(level, puzzle);
     effects.clear();
     marks = [];
+    trail = [];
+    playerSkin = SL.Cosmetics.equipped("skin");
+    playerTrail = SL.Cosmetics.equipped("trail");
     hit = null;
     goalFlashAt = null;
     guide = null;
@@ -572,6 +581,7 @@ SL.UI = (function () {
       if (!paused) {
         session.update(now);
         effects.update(dt);
+        updateTrail(now);
         if (!session.finished && mode === "level") {
           const elapsed = session.getElapsedMs(now);
           hudTimer.textContent = formatTime(elapsed);
@@ -595,9 +605,23 @@ SL.UI = (function () {
         hit,
         guide,
         highlight,
+        skin: playerSkin,
+        trailStyle: playerTrail,
+        trail,
       });
     }
     rafId = requestAnimationFrame(gameLoop);
+  }
+
+  // Spur: jedes Feld, über das die Figur rutscht, kommt einmal in die Liste (wie bei Maze)
+  const TRAIL_LENGTH = 6;
+  function updateTrail(now) {
+    const pos = session.getPlayerPos(now);
+    const r = Math.round(pos.r), c = Math.round(pos.c);
+    const last = trail[trail.length - 1];
+    if (last && last.r === r && last.c === c) return;
+    trail.push({ r, c, seed: r * 31 + c * 17 });
+    if (trail.length > TRAIL_LENGTH) trail.shift();
   }
 
   // Sterne-Anzeige unter dem Timer: welche Wertung gerade noch drin ist und bis wann
@@ -641,13 +665,11 @@ SL.UI = (function () {
     const reward = SL.Economy.computeReward({
       levelId: currentLevelId,
       stars: result.stars,
-      moves: result.moves,
-      minMoves: result.minMoves,
       coinsCollected: result.coinsCollected,
-      prevStars: prev ? prev.stars : null,
     });
-    SL.Economy.recordLevelResult(state, currentLevelId, result, reward.total);
-    return { reward, isNewBest: !prev || result.timeMs < prev.bestTimeMs };
+    // Eintragen erledigt evtl. Aufgaben -> Items, die dadurch im Shop neu freigeschaltet sind
+    const unlocked = SL.Cosmetics.unlockedBy(() => SL.Economy.recordLevelResult(state, currentLevelId, result, reward.total));
+    return { reward, isNewBest: !prev || result.timeMs < prev.bestTimeMs, unlocked };
   }
 
   const RESULT_TITLES = { 3: "Perfekt!", 2: "Stark!", 1: "Geschafft!" };
@@ -672,6 +694,12 @@ SL.UI = (function () {
     document.getElementById("results-note").innerHTML = result.stars === 3
       ? `Schnellste Lösung: ${minMoves} Züge${coinNote}`
       : `Schnellste Lösung: ${minMoves} Züge${coinNote}<br>Für 3 Sterne fehlen noch <b>${formatTime(missingMs)}</b>`;
+
+    const unlockEl = document.getElementById("results-unlock");
+    unlockEl.innerHTML = outcome.unlocked.length
+      ? `<span class="inline-icon">${STAR_ICON}</span> Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`
+      : "";
+    unlockEl.classList.toggle("hidden", !outcome.unlocked.length);
 
     const nextBtn = document.getElementById("btn-next-level");
     const nextLevel = SL.getNextLevel(currentLevelId);
@@ -896,8 +924,16 @@ SL.UI = (function () {
     document.documentElement.style.setProperty("--app-height", `${Math.round(height)}px`);
   }
 
+  // Die Maskottchen (Pause/Ergebnis) tragen den ausgerüsteten Skin (CSS kommt vom Muster des Skins)
+  function applyPlayerLook() {
+    SL.CosmeticsDraw.applyMascotLook(SL.Cosmetics.equipped("skin"));
+  }
+
   function init() {
     state = SL.Storage.load();
+    // Aufgaben für den Shop: auch alles, was vor dem Update schon geschafft war
+    SL.Economy.checkQuests(state);
+    SL.Quests.sync();
     syncViewportHeight();
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
@@ -964,11 +1000,16 @@ SL.UI = (function () {
     });
     window.addEventListener("pageshow", (e) => {
       if (!e.persisted) return;
+      applyPlayerLook();
       if (document.getElementById("screen-menu").classList.contains("active")) refreshMenu();
       else refreshCoinDisplays();
     });
-    // Coins können sich auch in einem anderen Tab ändern (Startseite, anderes Spiel)
-    SL.Profile.onChange(refreshCoinDisplays);
+    // Coins und Skins können sich auch in einem anderen Tab ändern (Startseite, Shop, anderes Spiel)
+    SL.Profile.onChange(() => {
+      refreshCoinDisplays();
+      applyPlayerLook();
+    });
+    applyPlayerLook();
 
     SL.Settings.init(state, (settings) => {
       effects.enabled = settings.effects;

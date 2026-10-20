@@ -8,9 +8,9 @@ if (location.protocol === "file:") {
   const toIndex = (e) => {
     const link = e.target.closest && e.target.closest("a[href]");
     if (!link) return;
-    const href = link.getAttribute("href");
-    // nur relative Ordner-Links (kein "https:", kein "?"/"#")
-    if (/^[^:?#]*\/$/.test(href)) link.setAttribute("href", href + "index.html");
+    // nur relative Ordner-Links (kein "https:"), ein "?..." oder "#..." dahinter bleibt erhalten
+    const m = link.getAttribute("href").match(/^([^:?#]*\/)([?#].*)?$/);
+    if (m) link.setAttribute("href", m[1] + "index.html" + (m[2] || ""));
   };
   document.addEventListener("click", toIndex, true);
   document.addEventListener("auxclick", toIndex, true); // Mittelklick = neuer Tab
