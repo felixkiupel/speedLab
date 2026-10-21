@@ -74,7 +74,7 @@ SL.Renderer = {
   // shake = Versatz fürs Bildschirm-Wackeln, squash = 0..1 Stärke des Schritt-Squashs,
   // finishMs = Zeit seit dem Zieleinlauf (null = noch unterwegs) für die Verwandlung der Figur.
   render(ctx, state) {
-    const { mazeLayer, cellSize, viewSize, pixelRatio, coins, collectedSet, checkpoints, player, trail, skin, trailStyle, time, direction, flashStrength, effects, shake, squash, finishMs } = state;
+    const { mazeLayer, cellSize, viewSize, pixelRatio, coins, collectedSet, checkpoints, player, trail, trailStyle, direction, flashStrength, effects, shake, squash, finishMs } = state;
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     const camX = player.x - viewSize / 2;
     const camY = player.y - viewSize / 2;
@@ -111,18 +111,19 @@ SL.Renderer = {
       drawFlag(ctx, fx, fy, cellSize, cp.reached);
     }
 
-    // Trail: zuletzt besuchte Zellen, ausblassend (keine Zwischenpositionen - der Punkt teleportiert)
+    // Spur über die zuletzt besuchten Zellen (keine Zwischenpositionen - der Punkt teleportiert).
+    // Welche, legt der Shop fest (shared/js/cosmetics.js) - Standard sind die Maze-Punkte.
+    const radius = cellSize * 0.3;
     const points = trail.map((t) => {
       const [x, y] = toScreen(t.c * cellSize + cellSize / 2, t.r * cellSize + cellSize / 2);
-      return { x, y, seed: t.r * 31 + t.c * 17 };
+      return { x, y };
     });
-    SL.CosmeticsDraw.drawTrail(ctx, points, cellSize, trailStyle, skin, time);
+    SL.CosmeticsDraw.drawTrail(ctx, points, radius, trailStyle);
 
     // Spieler: immer exakt in der Canvas-Mitte. Die Pupillen schauen in "direction",
     // die Richtung des letzten erfolgreichen Schritts. Im Ziel wird er zum Quadrat.
-    const radius = cellSize * 0.3;
     const body = finishMs == null ? null : goalBody(radius, cellSize, finishMs);
-    drawPlayer(ctx, viewSize / 2, viewSize / 2, radius, skin, direction, time, squash, body);
+    drawPlayer(ctx, viewSize / 2, viewSize / 2, radius, direction, squash, body);
 
     effects.render(ctx, toScreen);
     ctx.restore();
@@ -161,9 +162,8 @@ function goalBody(radius, cellSize, ms) {
 
 // squash (0..1): direkt nach einem Schritt wird die Figur kurz in Laufrichtung gestreckt und
 // quer dazu gestaucht - gibt dem "Teleport" pro Feld einen spürbaren Ruck. body: Form im Ziel
-// (goalBody), sonst Kreis. Körper im Skin-Muster + Augen kommen aus shared/js/cosmetics-draw.js,
-// genau wie im Shop.
-function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0, body = null) {
+// (goalBody), sonst Kreis. Körper + Augen kommen aus shared/js/cosmetics-draw.js, wie im Shop.
+function drawPlayer(ctx, x, y, radius, direction, squash = 0, body = null) {
   const d = direction ? SL.DIRS[direction] : null;
   const k = d ? squash * 0.22 : 0;
   ctx.save();
@@ -173,7 +173,7 @@ function drawPlayer(ctx, x, y, radius, skin, direction, time, squash = 0, body =
     ctx.scale(horizontal ? 1 + k : 1 - k * 0.6, horizontal ? 1 - k * 0.6 : 1 + k);
     ctx.translate(-x, -y);
   }
-  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, skin, d ? { x: d.dc, y: d.dr } : null, time, body);
+  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, d ? { x: d.dc, y: d.dr } : null, body);
   ctx.restore();
 }
 

@@ -1,8 +1,7 @@
-// Spielübergreifendes Profil: Coins, die tägliche Serie, die Skins aus dem Shop und die geschafften
-// Aufgaben (quests.js) gehören keinem einzelnen Spiel. Coins aus einem Spiel kann man in jedem anderen
-// ausgeben, und die Serie hält, solange man jeden Tag das Daily von irgendeinem Spiel schafft.
-// Alles andere (Level, Bestwerte, Einstellungen) speichert jedes Spiel selbst unter einem eigenen
-// Schlüssel.
+// Spielübergreifendes Profil: Coins, die tägliche Serie und der Look aus dem Shop gehören keinem
+// einzelnen Spiel. Coins aus einem Spiel kann man in jedem anderen ausgeben, und die Serie hält,
+// solange man jeden Tag das Daily von irgendeinem Spiel schafft. Alles andere (Level, Bestwerte,
+// Einstellungen) speichert jedes Spiel selbst unter einem eigenen Schlüssel.
 //
 // Alle Spielstände liegen unter "speedlab_*": Auf github.io teilen sich alle Projekte eines
 // Accounts denselben localStorage, das Präfix hält sie auseinander.
@@ -20,11 +19,10 @@ SL.Profile = (function () {
 
   function defaults() {
     // dailyLog: { [YYYY-MM-DD]: ["maze", ...] } - welche Spiele an dem Tag ihr Daily geschafft haben
-    // cosmetics: gekaufte Skins/Spuren + was ausgerüstet ist ({ skin, trail }), siehe cosmetics.js
-    // quests: { [aufgabe]: Zeitpunkt } - geschaffte Aufgaben, siehe quests.js
+    // cosmetics.equipped: was im Shop ausgerüstet ist ({ skin, trail }), siehe cosmetics.js
     return {
       coins: 0, streak: 0, bestStreak: 0, lastDaily: null, dailyLog: {},
-      cosmetics: { owned: [], equipped: {} }, quests: {},
+      cosmetics: { equipped: {} },
     };
   }
 
@@ -73,58 +71,18 @@ SL.Profile = (function () {
   }
 
   // ---------- Shop ----------
-  // Nur der Besitz - welche Items es gibt und was sie kosten, steht in cosmetics.js
-
-  function ownedCosmetics() {
-    return read().cosmetics.owned;
-  }
+  // Nur was ausgerüstet ist - welche Items es gibt, steht in cosmetics.js
 
   function equippedCosmetic(type) {
     return read().cosmetics.equipped[type] || null;
   }
 
-  // Coins abziehen, Item besitzen und ausrüsten in einem Schritt. false = zu wenig Coins
-  function buyCosmetic(id, type, price) {
-    if (read().coins < price) return false;
+  // id = null legt das Item der Kategorie wieder ab (dann gilt der Standard)
+  function equipCosmetic(type, id) {
     update((p) => {
-      p.coins -= price;
-      if (!p.cosmetics.owned.includes(id)) p.cosmetics.owned.push(id);
-      p.cosmetics.equipped[type] = id;
+      if (id) p.cosmetics.equipped[type] = id;
+      else delete p.cosmetics.equipped[type];
     });
-    return true;
-  }
-
-  function equipCosmetic(id, type) {
-    update((p) => { p.cosmetics.equipped[type] = id; });
-  }
-
-  // Ausgemusterte Items zurücknehmen: refunds = [{ id, coins }]. Wer eins besitzt, bekommt die
-  // Coins zurück, ist es ausgerüstet, gilt wieder der Standard. Läuft bei jedem Laden, tut aber nur
-  // etwas, solange noch so ein Item im Besitz ist.
-  function refundCosmetics(refunds) {
-    const owned = read().cosmetics.owned;
-    const hits = refunds.filter((r) => owned.includes(r.id));
-    if (!hits.length) return;
-    update((p) => {
-      for (const { id, coins } of hits) {
-        p.cosmetics.owned = p.cosmetics.owned.filter((o) => o !== id);
-        p.coins += coins;
-        for (const type of Object.keys(p.cosmetics.equipped)) {
-          if (p.cosmetics.equipped[type] === id) delete p.cosmetics.equipped[type];
-        }
-      }
-    });
-  }
-
-  // ---------- Aufgaben ----------
-  // Nur das Festhalten - welche Aufgaben es gibt und wann sie erfüllt sind, steht in quests.js
-
-  function questDone(id) {
-    return Boolean(read().quests[id]);
-  }
-
-  function completeQuest(id) {
-    if (!questDone(id)) update((p) => { p.quests[id] = Date.now(); });
   }
 
   // ---------- Belohnung (für alle Spiele gleich) ----------
@@ -212,7 +170,7 @@ SL.Profile = (function () {
       }
       if (!localStorage.getItem(KEY)) {
         const p = defaults();
-        delete p.cosmetics; // die Skins holt migrateShop gleich danach aus dem Maze-Spielstand
+        delete p.cosmetics; // gekaufte Skins im Maze-Spielstand erstattet migrateShop gleich danach
         p.coins = old.coins || 0;
         p.streak = daily.streak || 0;
         p.bestStreak = daily.bestStreak || 0;
@@ -228,29 +186,41 @@ SL.Profile = (function () {
   }
   migrateLegacy();
 
-  // Einmaliger Umzug, als der Shop aus Maze in alle Spiele wanderte: Gekaufte Skins/Spuren lagen im
-  // Maze-Spielstand - das Profil holt sie sich einmal von dort.
+  // Einmaliges Aufräumen, als Skins, Kauf-Spuren und Aufgaben wieder rausflogen (Okt. 2026): Wer
+  // eins der Items gekauft hatte, bekommt die Coins zurück. Gekauft wurde früher im Maze-Shop (lag im
+  // Maze-Spielstand) und danach im Shop für alle Spiele (lag im Profil unter cosmetics.owned).
+  // Erledigt, sobald das Profil keine Liste "owned" mehr hat.
+  const SCRAPPED_PRICES = {
+    // Maze-Shop
+    ember: 50, violet: 80, lime: 120, rose: 160, gold: 250, ice: 300, crimson: 350, sunset: 450,
+    zebra: 600, ghost: 700, aurora: 850, galaxy: 1200, prism: 1500,
+    "trail-tint": 100, "trail-line": 300, "trail-pixels": 400, "trail-sparks": 750, "trail-rainbow": 1400,
+    // Shop für alle Spiele
+    dawn: 100, frost: 100, flame: 250, twin: 250, bolt: 500, bullseye: 500, polar: 1000, labyrinth: 1000, holo: 2000,
+    "trail-rings": 100, "trail-thread": 250, "trail-flags": 500, "trail-comet": 1000, "trail-phoenix": 2000,
+  };
   function migrateShop() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw && JSON.parse(raw).cosmetics) return;
-      const save = (id) => JSON.parse(localStorage.getItem(`speedlab_${id}_v1`) || "null");
-      const maze = save("maze");
+      const stored = raw ? JSON.parse(raw) : null;
+      if (stored && stored.cosmetics && !stored.cosmetics.owned) return;
+      const maze = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY) || "null");
+      const owned = stored && stored.cosmetics ? stored.cosmetics.owned : (maze && maze.ownedCosmetics) || [];
+      const refund = [...new Set(owned)].reduce((sum, id) => sum + (SCRAPPED_PRICES[id] || 0), 0);
       update((p) => {
-        p.cosmetics = {
-          owned: (maze && maze.ownedCosmetics) || [],
-          equipped: (maze && maze.equipped) || (maze && maze.equippedCosmetic ? { skin: maze.equippedCosmetic } : {}),
-        };
+        p.coins += refund;
+        p.cosmetics = { equipped: {} };
+        delete p.quests;
       });
     } catch (e) {
-      console.warn("Skins konnten nicht ins Profil übernommen werden.", e);
+      console.warn("Alte Shop-Käufe konnten nicht erstattet werden.", e);
     }
   }
   migrateShop();
 
   return {
     coins, addCoins, spend, levelPay, dailyBonus,
-    ownedCosmetics, equippedCosmetic, buyCosmetic, equipCosmetic, refundCosmetics, questDone, completeQuest,
+    equippedCosmetic, equipCosmetic,
     streak, bestStreak, dailiesOn, completeDaily, onChange,
   };
 })();

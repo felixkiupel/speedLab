@@ -51,19 +51,6 @@ SL.Economy = {
     return { parts, total: parts.reduce((sum, p) => sum + p.coins, 0) };
   },
 
-  // Aufgaben für den Shop (shared/js/quests.js), die nur Leap kennt. Geprüft wird aus dem
-  // Spielstand - so zählen auch Bestwerte von früher. Beim Start, nach jedem Level und an jedem
-  // Checkpoint im Endlosmodus.
-  checkQuests(state) {
-    const results = SL.LEVELS.map((level) => ({ level, r: state.levelResults[String(level.id)] }));
-    const perfect = ({ r }) => Boolean(r && r.bestAccuracy >= 100);
-    if (results.some((x) => x.level.chapter === 1 && perfect(x))) SL.Quests.complete("leap-easy-100");
-    if (results.some((x) => x.level.chapter === 3 && perfect(x))) SL.Quests.complete("leap-hard-100");
-    if (results.every(perfect)) SL.Quests.complete("leap-all-100");
-    if (results.every(({ r }) => r && r.stars === 3)) SL.Quests.complete("leap-all-3");
-    if (state.endless.checkpoints >= 100) SL.Quests.complete("endless-100");
-  },
-
   // Trägt ein Run-Ergebnis ein: Coins werden immer gutgeschrieben, Bestwerte nur verbessert
   recordLevelResult(state, levelId, { accuracy, stars, coinsCollected }, coinsEarned) {
     const key = String(levelId);
@@ -75,7 +62,6 @@ SL.Economy = {
       timesPlayed: (prev?.timesPlayed || 0) + 1,
     };
     SL.Storage.save(state);
-    this.checkQuests(state);
     SL.Profile.addCoins(coinsEarned);
   },
 };

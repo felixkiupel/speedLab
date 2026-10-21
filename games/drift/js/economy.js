@@ -59,16 +59,6 @@ SL.Economy = {
     return { parts, total: parts.reduce((sum, p) => sum + p.coins, 0) };
   },
 
-  // Aufgaben für den Shop (shared/js/quests.js), die nur Drift kennt. Geprüft wird aus dem
-  // Spielstand - so zählen auch Lösungen von früher. Beim Start und nach jedem Level.
-  checkQuests(state) {
-    const results = SL.LEVELS.map((level) => ({ level, r: state.levelResults[String(level.id)] }));
-    if (!SL.Quests.isDone("drift-ideal") && results.some(({ level, r }) => r && r.bestMoves === SL.getLevelPuzzle(level.id).analysis.minMoves)) {
-      SL.Quests.complete("drift-ideal");
-    }
-    if (results.every(({ r }) => r && r.stars === 3)) SL.Quests.complete("drift-all");
-  },
-
   // Trägt ein Run-Ergebnis ein: Coins werden immer gutgeschrieben, Bestwerte nur verbessert
   recordLevelResult(state, levelId, { timeMs, stars, moves }, coinsEarned) {
     const key = String(levelId);
@@ -80,7 +70,6 @@ SL.Economy = {
       timesPlayed: (prev?.timesPlayed || 0) + 1,
     };
     SL.Storage.save(state);
-    this.checkQuests(state);
     SL.Profile.addCoins(coinsEarned);
   },
 };

@@ -450,8 +450,7 @@ a.game-card:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--lift)
 .game-card.soon .game-preview::after { display: none; }
 .game-card.soon .game-name { color: var(--text-dim); }
 .soon-mascot {
-  --player-bg: var(--border-soft);
-  --player-ring: none;
+  background: var(--border-soft);
   width: 72px;
   height: 72px;
 }
@@ -472,8 +471,6 @@ a.game-card:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--lift)
 .foot-brand { display: flex; align-items: center; gap: 12px; }
 /* Kleine Ausgabe der Figur im Basis-Schwarz, schaut sich wie die großen um */
 .foot-mascot {
-  --player-bg: var(--ink);
-  --player-ring: none;
   flex-shrink: 0;
   width: 34px;
   height: 34px;

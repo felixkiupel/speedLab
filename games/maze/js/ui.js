@@ -17,8 +17,7 @@ SL.UI = (function () {
   let finishTimer = null; // kurze Pause mit Konfetti zwischen Zieleinlauf und Ergebnis
   let resultTimers = []; // gestaffelte Sterne-Animation im Ergebnis
   let mazeLayer = null;
-  let playerSkin = null; // ausgerüsteter Skin + Spur, beim Levelstart festgelegt
-  let playerTrail = null;
+  let playerTrail = null; // Spur aus dem Shop, beim Levelstart festgelegt
   let rafId = null;
   let lastFrameTime = 0;
   let paused = false;
@@ -82,7 +81,6 @@ SL.UI = (function () {
   const FLAME_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 3.3-1.3 5-3 6.8C7.3 11 6 12.8 6 15.3 6 18.7 8.7 21.5 12 21.5s6-2.8 6-6.2c0-2.5-1.2-4.3-2.7-5.7.1 1.7-.6 3-1.7 3.6.5-3.9-.4-7.4-1.6-10.7z"/></svg>`;
 
   // Icons mitten im Fließtext (die normalen sind display:block für Flex-Layouts)
-  const INLINE_STAR = `<span class="inline-icon">${STAR_ICON}</span>`;
   const INLINE_COIN = `<span class="inline-icon">${COIN_ICON}</span>`;
   const INLINE_FLAME = `<span class="inline-icon">${FLAME_ICON}</span>`;
 
@@ -207,11 +205,6 @@ SL.UI = (function () {
     }
   }
 
-  // Die Maskottchen (Pause/Ergebnis) tragen den ausgerüsteten Skin (CSS kommt vom Muster des Skins)
-  function applyPlayerLook() {
-    SL.CosmeticsDraw.applyMascotLook(SL.Cosmetics.equipped("skin"));
-  }
-
   // Fester quadratischer Ausschnitt (Viewport) - unabhängig von der Maze-Größe,
   // zeigt immer nur die Umgebung um den Spieler statt des ganzen Levels. Wird auch bei
   // Fenster-Resize/Zoom neu berechnet; die Pixelpuffer werden mit devicePixelRatio
@@ -259,9 +252,8 @@ SL.UI = (function () {
     startHint.classList.remove("hidden");
     pauseOverlay.classList.add("hidden");
     paused = false;
-    // Look wird beim Start festgelegt und ändert sich während des Laufs nicht
-    playerSkin = SL.Cosmetics.equipped("skin");
-    playerTrail = SL.Cosmetics.equipped("trail");
+    // Spur wird beim Start festgelegt und ändert sich während des Laufs nicht
+    playerTrail = SL.Cosmetics.trailFor("maze");
     // "Verlassen" führt dorthin zurück, wo man herkam
     document.getElementById("btn-quit").dataset.nav = mode === "daily" ? "screen-menu" : "screen-levels";
 
@@ -310,8 +302,7 @@ SL.UI = (function () {
       SL.Haptics.vibrate([40, 30, 60]);
       stepCombo = 0;
       const p = cellCenter(session.cur);
-      const accent = playerSkin.accent || playerSkin.colors[0];
-      effects.burst(p.x, p.y, { count: 18, colors: [accent, "#2b2420", "#c0392b"], speed: [90, 220], life: [300, 650], size: [2, 4] });
+      effects.burst(p.x, p.y, { count: 18, colors: ["#2b2420", "#85786a", "#c0392b"], speed: [90, 220], life: [300, 650], size: [2, 4] });
       effects.shake(7, 260);
       if (session.respawnIndex >= 0) effects.text(p.x, p.y - CELL_SIZE * 0.75, "Zurück zum Checkpoint");
     };
@@ -352,9 +343,7 @@ SL.UI = (function () {
         checkpoints: session.checkpoints,
         player: session.getPlayerPixel(CELL_SIZE),
         trail: session.trail,
-        skin: playerSkin,
         trailStyle: playerTrail,
-        time: now,
         direction: session.currentDir,
         flashStrength: session.getCrashFlashStrength(),
         effects,
@@ -411,16 +400,14 @@ SL.UI = (function () {
       stars: result.stars,
       coinsCollected: result.coinsCollected,
     });
-    // Eintragen erledigt evtl. Aufgaben -> Items, die dadurch im Shop neu freigeschaltet sind
-    const unlocked = SL.Cosmetics.unlockedBy(() => SL.Economy.recordLevelResult(state, currentLevelId, result.timeMs, result.stars, coinsEarned));
-    return { coinsEarned, isNewBest: !prev || result.timeMs < prev.bestTimeMs, unlocked };
+    SL.Economy.recordLevelResult(state, currentLevelId, result.timeMs, result.stars, coinsEarned);
+    return { coinsEarned, isNewBest: !prev || result.timeMs < prev.bestTimeMs };
   }
 
   // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus, der mit der Serie wächst)
   function recordDailyRun(result) {
-    let daily;
-    const unlocked = SL.Cosmetics.unlockedBy(() => { daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.timeMs, result.stars); });
-    return { coinsEarned: daily.coins, isNewBest: daily.isNewBest, unlocked, daily };
+    const daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.timeMs, result.stars);
+    return { coinsEarned: daily.coins, isNewBest: daily.isNewBest, daily };
   }
 
   const RESULT_TITLES = { 3: "Perfekt!", 2: "Stark!", 1: "Geschafft!" };
@@ -442,16 +429,15 @@ SL.UI = (function () {
       ? `${optimalSteps} Felder × ${secPerTile} s = ${formatTime(t3)} – geschafft!`
       : `${optimalSteps} Felder × ${secPerTile} s = ${formatTime(t3)}<br>Für 3 Sterne fehlen noch <b>${formatTime(missingMs)}</b>`;
 
-    // Infozeile: Daily -> Serie + nächstes Daily; dazu neu im Shop freigeschaltete Items
+    // Infozeile: Daily -> Serie + nächstes Daily
     const infoEl = document.getElementById("results-unlock");
-    const lines = [];
+    let info = "";
     if (isDaily) {
       const { streak, firstClear } = outcome.daily;
-      lines.push(`${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
-        + (firstClear ? ` · Tagesbonus +${outcome.coinsEarned}${INLINE_COIN}` : ""), `Nächstes Daily in ${SL.Days.timeUntilNext()}`);
+      info = `${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
+        + (firstClear ? ` · Tagesbonus +${outcome.coinsEarned}${INLINE_COIN}` : "")
+        + `<br>Nächstes Daily in ${SL.Days.timeUntilNext()}`;
     }
-    if (outcome.unlocked.length) lines.push(`${INLINE_STAR} Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`);
-    const info = lines.join("<br>");
     infoEl.innerHTML = info;
     infoEl.classList.toggle("hidden", !info);
 
@@ -491,7 +477,6 @@ SL.UI = (function () {
         restartAnimation(badge, "pop");
       }, afterStars));
     }
-    if (outcome.unlocked.length) resultTimers.push(setTimeout(() => SL.Audio.play("unlock"), afterStars + 150));
 
     const coinsEl = document.getElementById("results-coins");
     const total = outcome.coinsEarned;
@@ -699,9 +684,6 @@ SL.UI = (function () {
 
   function init() {
     state = SL.Storage.load();
-    // Aufgaben für den Shop: auch alles, was vor dem Update schon geschafft war
-    SL.Economy.checkQuests(state);
-    SL.Quests.sync();
     syncViewportHeight();
     if (window.visualViewport) {
       // Leiste fährt ein/aus -> sichtbare Höhe ändert sich -> Spielfeld neu einpassen
@@ -755,21 +737,16 @@ SL.UI = (function () {
     // Zurück-Button von der Startseite: Seite kommt evtl. aus dem Cache -> Coins/Menü neu einlesen
     window.addEventListener("pageshow", (e) => {
       if (!e.persisted) return;
-      applyPlayerLook();
       if (menuActive()) refreshMenu();
       else refreshCoinDisplays();
     });
-    // Coins und Skins können sich auch in einem anderen Tab ändern (Startseite, Shop, anderes Spiel)
-    SL.Profile.onChange(() => {
-      refreshCoinDisplays();
-      applyPlayerLook();
-    });
+    // Coins können sich auch in einem anderen Tab ändern (Startseite, anderes Spiel)
+    SL.Profile.onChange(refreshCoinDisplays);
 
     SL.Settings.init(state, (settings) => {
       effects.enabled = settings.effects;
       applyTouchControls();
     });
-    applyPlayerLook();
     refreshMenu();
   }
 

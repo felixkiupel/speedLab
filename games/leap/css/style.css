@@ -149,5 +149,8 @@
 /* Fläche, Knopf-Optik und Ring kommen aus game.css. Leap hat nur einen Knopf, mittig und größer
    als die vier von Maze - die Fläche darf dafür etwas niedriger sein, das Spielfeld bekommt die
    Höhe. */
-#app.tap-controls .tap-pad { --pad-size: min(32dvh, 280px); }
+#app.tap-controls .tap-pad { --pad-size: min(32vh, 280px); }
+@supports (height: 1dvh) {
+  #app.tap-controls .tap-pad { --pad-size: min(32dvh, 280px); }
+}
 .tap-jump { left: 50%; top: 50%; width: 58%; height: 58%; }

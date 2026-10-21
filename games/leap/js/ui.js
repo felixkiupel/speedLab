@@ -27,10 +27,8 @@ SL.UI = (function () {
   let pixelRatio = 1;
   const cam = { x: 0, y: 0 };
   let camLockY = null; // beim Absturz bleibt die Kamera stehen, die Figur fällt aus dem Bild
-  let trail = []; // zuletzt besuchte Positionen [{x, y, seed}] für die Spur
-  let trailSeed = 0;
-  let playerSkin = null; // ausgerüsteter Skin + Spur, beim Start des Laufs festgelegt
-  let playerTrail = null;
+  let trail = []; // zuletzt besuchte Positionen [{x, y}] für die Spur
+  let playerTrail = null; // Spur aus dem Shop, beim Start des Laufs festgelegt
   let lastTrailAt = 0;
   let hits = new Map(); // Punkt-ID -> Zeitpunkt des Absprungs (fürs Aufleuchten)
   let squash = null;
@@ -275,8 +273,7 @@ SL.UI = (function () {
     session = new SL.LeapSession(course);
     effects.clear();
     trail = [];
-    playerSkin = SL.Cosmetics.equipped("skin");
-    playerTrail = SL.Cosmetics.equipped("trail");
+    playerTrail = SL.Cosmetics.trailFor("leap");
     hits = new Map();
     squash = null;
     flashAt = -Infinity;
@@ -424,13 +421,8 @@ SL.UI = (function () {
   // wieder auf der Strecke. Jeder Coin ist 1 Coin.
   function onEndlessCheckpoint(pl) {
     endlessRun.extend(pl.index);
-    let total;
-    const unlocked = SL.Cosmetics.unlockedBy(() => {
-      total = SL.Endless.addCheckpoint(state);
-      SL.Economy.checkQuests(state);
-    });
+    const total = SL.Endless.addCheckpoint(state);
     effects.text(pl.flagX + 10, pl.top - 52, `Checkpoint ${total}!`);
-    for (const cos of unlocked) effects.text(pl.flagX + 10, pl.top - 80, `Neu im Shop: ${cos.name}`);
     let coins = 0;
     for (const id of session.collected) {
       if (endlessBanked.has(id)) continue;
@@ -473,7 +465,6 @@ SL.UI = (function () {
         trail,
         hits,
         squash: effects.enabled ? squash : null,
-        skin: playerSkin,
         trailStyle: playerTrail,
       });
     }
@@ -486,7 +477,7 @@ SL.UI = (function () {
     if (session.mode !== "air" && session.mode !== "ground") return;
     if (now - lastTrailAt < TRAIL_EVERY_MS) return;
     lastTrailAt = now;
-    trail.push({ x: fig.x, y: fig.y, seed: trailSeed++ });
+    trail.push({ x: fig.x, y: fig.y });
     if (trail.length > TRAIL_LENGTH) trail.shift();
   }
 
@@ -553,18 +544,16 @@ SL.UI = (function () {
       coinsCollected: result.coinsCollected,
     });
     const endlessBefore = state.endless.unlocked;
-    // Eintragen erledigt evtl. Aufgaben -> Items, die dadurch im Shop neu freigeschaltet sind
-    const unlocked = SL.Cosmetics.unlockedBy(() => SL.Economy.recordLevelResult(state, currentLevelId, result, reward.total));
+    SL.Economy.recordLevelResult(state, currentLevelId, result, reward.total);
     const endlessUnlocked = !endlessBefore && SL.Endless.isUnlocked(state);
-    return { reward, isNewBest: !prev || result.accuracy > prev.bestAccuracy, endlessUnlocked, unlocked };
+    return { reward, isNewBest: !prev || result.accuracy > prev.bestAccuracy, endlessUnlocked };
   }
 
   // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus, der mit der Serie wächst)
   function recordDailyRun(result) {
-    let daily;
-    const unlocked = SL.Cosmetics.unlockedBy(() => { daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.accuracy, result.stars); });
+    const daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.accuracy, result.stars);
     const parts = daily.coins ? [{ label: "Tagesbonus", coins: daily.coins }] : [];
-    return { reward: { parts, total: daily.coins }, isNewBest: daily.isNewBest, daily, unlocked };
+    return { reward: { parts, total: daily.coins }, isNewBest: daily.isNewBest, daily };
   }
 
   const RESULT_TITLES = { 3: "Perfekt!", 2: "Stark!", 1: "Geschafft!" };
@@ -601,9 +590,6 @@ SL.UI = (function () {
         + `<br>Nächstes Daily in ${SL.Days.timeUntilNext()}`;
     } else if (outcome.endlessUnlocked) {
       info = `Alle ${SL.Endless.maxStars()} Sterne! Der <b>Endlosmodus</b> ist frei – ganz unten in der Level-Auswahl.`;
-    }
-    if (outcome.unlocked.length) {
-      info += `${info ? "<br>" : ""}<span class="inline-icon">${STAR_ICON}</span> Neu im Shop freigeschaltet: <b>${outcome.unlocked.map((c) => c.name).join(", ")}</b>`;
     }
     infoEl.innerHTML = info;
     infoEl.classList.toggle("hidden", !info);
@@ -848,16 +834,8 @@ SL.UI = (function () {
     document.documentElement.style.setProperty("--app-height", `${Math.round(height)}px`);
   }
 
-  // Die Maskottchen (Pause/Ergebnis) tragen den ausgerüsteten Skin (CSS kommt vom Muster des Skins)
-  function applyPlayerLook() {
-    SL.CosmeticsDraw.applyMascotLook(SL.Cosmetics.equipped("skin"));
-  }
-
   function init() {
     state = SL.Storage.load();
-    // Aufgaben für den Shop: auch alles, was vor dem Update schon geschafft war
-    SL.Economy.checkQuests(state);
-    SL.Quests.sync();
     syncViewportHeight();
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
@@ -910,16 +888,11 @@ SL.UI = (function () {
     });
     window.addEventListener("pageshow", (e) => {
       if (!e.persisted) return;
-      applyPlayerLook();
       if (menuActive()) refreshMenu();
       else refreshCoinDisplays();
     });
-    // Coins und Skins können sich auch in einem anderen Tab ändern (Startseite, Shop, anderes Spiel)
-    SL.Profile.onChange(() => {
-      refreshCoinDisplays();
-      applyPlayerLook();
-    });
-    applyPlayerLook();
+    // Coins können sich auch in einem anderen Tab ändern (Startseite, anderes Spiel)
+    SL.Profile.onChange(refreshCoinDisplays);
 
     SL.Settings.init(state, (settings) => {
       effects.enabled = settings.effects;

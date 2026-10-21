@@ -1,6 +1,5 @@
 // Sterne, Coin-Belohnung und Level-Freischaltung. Die Coins selbst liegen im spielübergreifenden
-// Profil (SL.Profile), damit man sie auch in anderen Spielen ausgeben kann. Skins und Spuren gibt es
-// im Shop für alle Spiele (shared/js/cosmetics.js, shop/).
+// Profil (SL.Profile), damit man sie auch in anderen Spielen ausgeben kann.
 window.SL = window.SL || {};
 
 // Sterne-Bewertung: erlaubte Zeit pro Feld des kürzesten Wegs, in ms.
@@ -59,15 +58,6 @@ SL.Economy = {
     return SL.Profile.levelPay(SL.levelUnlockCost(levelId + 1), stars) + coinsCollected;
   },
 
-  // Aufgaben für den Shop (shared/js/quests.js), die nur Maze kennt. Geprüft wird aus dem
-  // Spielstand - so zählen auch Bestzeiten von früher. Beim Start und nach jedem Level.
-  checkQuests(state) {
-    const results = SL.LEVELS.map((level) => ({ level, r: state.levelResults[String(level.id)] }));
-    if (results.some(({ level, r }) => r && level.chapter === 1 && r.bestTimeMs < 3000)) SL.Quests.complete("maze-fast");
-    if (results.some(({ level, r }) => r && level.chapter === 3 && r.stars === 3)) SL.Quests.complete("maze-hard");
-    if (results.every(({ r }) => r && r.stars === 3)) SL.Quests.complete("maze-all");
-  },
-
   // Trägt ein Run-Ergebnis ein: Coins werden immer gutgeschrieben, Bestzeit/Sterne nur verbessert
   recordLevelResult(state, levelId, timeMs, stars, coinsEarned) {
     const key = String(levelId);
@@ -77,7 +67,6 @@ SL.Economy = {
     const bestStars = prev ? Math.max(prev.stars, stars) : stars;
     state.levelResults[key] = { bestTimeMs, stars: bestStars, timesPlayed };
     SL.Storage.save(state);
-    this.checkQuests(state);
     SL.Profile.addCoins(coinsEarned);
   },
 };

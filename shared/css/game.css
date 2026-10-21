@@ -15,12 +15,15 @@ html, body {
 #app {
   position: relative;
   width: 100%;
-  height: 100vh;
   /* Tatsächlich sichtbare Höhe (ui.js setzt --app-height aus visualViewport) - bei iOS-Safari liegt
-     die Adress-/Tab-Leiste unten und würde sonst den unteren Rand verdecken. min() mit 100dvh,
-     damit ein kurz veralteter JS-Wert die Seite nie größer als den Bildschirm macht. */
-  height: min(100dvh, var(--app-height, 100dvh));
+     die Adress-/Tab-Leiste unten und würde sonst den unteren Rand verdecken. */
+  height: var(--app-height, 100vh);
   overflow: hidden;
+}
+/* min() mit 100dvh, damit ein kurz veralteter JS-Wert die Seite nie größer als den Bildschirm
+   macht. Nur wo der Browser dvh kennt: sonst wäre die Regel ungültig und #app 0 px hoch. */
+@supports (height: 100dvh) {
+  #app { height: min(100dvh, var(--app-height, 100dvh)); }
 }
 
 .screen {
@@ -362,7 +365,7 @@ html, body {
    (Maze: Raute aus vier, Leap: einer in der Mitte). */
 .tap-pad { display: none; }
 #app.tap-controls .tap-pad {
-  --pad-size: min(40dvh, 360px);
+  --pad-size: min(40vh, 360px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -377,6 +380,9 @@ html, body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+}
+@supports (height: 1dvh) {
+  #app.tap-controls .tap-pad { --pad-size: min(40dvh, 360px); }
 }
 .tap-field {
   position: relative;

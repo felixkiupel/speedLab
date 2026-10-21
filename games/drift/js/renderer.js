@@ -61,9 +61,9 @@ SL.Renderer = {
   },
 
   // state: { board, layer, cell, width, height, pixelRatio, now, session, effects, introStart,
-  //          marks, goalFlashAt, hit: { key|edge, start }, guide, highlight, skin, trailStyle, trail }
-  //   skin, trailStyle: ausgerüstet im Shop (shared/js/cosmetics.js)
-  //   trail: zuletzt überrutschte Felder [{r, c, seed}], ältestes zuerst
+  //          marks, goalFlashAt, hit: { key|edge, start }, guide, highlight, trailStyle, trail }
+  //   trailStyle: Spur aus dem Shop (shared/js/cosmetics.js) - Standard ist der Drift-Schweif
+  //   trail: zuletzt überrutschte Felder [{r, c}], ältestes zuerst (für alle anderen Spuren)
   //   guide: { dir, path, start } - Tutorial-Pfeil: wohin der nächste Zug rutscht
   //   highlight: Feldtyp (z.B. SL.SNOW), dessen Felder pulsieren - "Neu"-Hinweis eines Kapitels
   render(ctx, s) {
@@ -82,17 +82,17 @@ SL.Renderer = {
 
     if (s.highlight != null) drawHighlight(ctx, board, s.highlight, cell, now);
     const playerRadius = cell * 0.32 * popScale((introT - 0.35) / 0.5);
-    drawTrails(ctx, s.marks, cell, now, playerRadius);
-    // Spur aus dem Shop über die zuletzt überrutschten Felder. Die Standard-Spur (Punkte) zeigt
-    // Drift nicht - hier ist der Schweif der Standard.
-    if (!s.trailStyle.default) {
-      const points = s.trail.map((t) => ({ x: (t.c + 0.5) * cell, y: (t.r + 0.5) * cell, seed: t.seed }));
-      SL.CosmeticsDraw.drawTrail(ctx, points, cell, s.trailStyle, s.skin, now);
+    // Der eigene Schweif folgt den Rutschern genau (zieht sich nach dem Stopp zurück). Jede andere
+    // Spur aus dem Shop läuft über die zuletzt überrutschten Felder.
+    if (s.trailStyle.game === "drift") drawTrails(ctx, s.marks, cell, now, playerRadius);
+    else {
+      const points = s.trail.map((t) => ({ x: (t.c + 0.5) * cell, y: (t.r + 0.5) * cell }));
+      SL.CosmeticsDraw.drawTrail(ctx, points, playerRadius, s.trailStyle);
     }
 
     // Ins Loch gefallen: die Figur versinkt dort statt obendrauf gezeichnet zu werden
     const fallMs = session.getFallMs(now);
-    if (fallMs != null) drawHoleFall(ctx, session.pos, cell, fallMs, playerRadius, session.dir, s.skin, now);
+    if (fallMs != null) drawHoleFall(ctx, session.pos, cell, fallMs, playerRadius, session.dir);
 
     const maxDist = board.rows + board.cols;
     for (let r = 0; r < board.rows; r++) {
@@ -131,7 +131,7 @@ SL.Renderer = {
       const pos = session.getPlayerPos(now);
       const finishMs = session.getFinishMs(now);
       const body = finishMs == null ? null : goalBody(playerRadius, cell, finishMs);
-      drawPlayer(ctx, (pos.c + 0.5) * cell, (pos.r + 0.5) * cell, playerRadius, session.dir, session.getDeform(now), body, s.skin, now);
+      drawPlayer(ctx, (pos.c + 0.5) * cell, (pos.r + 0.5) * cell, playerRadius, session.dir, session.getDeform(now), body);
     }
 
     effects.render(ctx, (x, y) => [x, y], { w: width, h: height });
@@ -196,7 +196,7 @@ function drawHole(ctx, x, y, s) {
 // Reinfallen: Die Figur kippt in die Tiefe - wird kleiner, sackt ab, verschwindet hinter dem
 // vorderen Rand und wird dabei dunkel. Kurz danach läuft ein blasser Ring vom Rand weg.
 //   ms = Zeit seit dem Reinfallen (das Versinken dauert SL.FALL_MS)
-function drawHoleFall(ctx, at, s, ms, radius, dir, skin, now) {
+function drawHoleFall(ctx, at, s, ms, radius, dir) {
   const cx = (at.c + 0.5) * s, cy = (at.r + 0.5) * s;
   const r = s * HOLE_R;
   const t = Math.min(1, ms / SL.FALL_MS);
@@ -208,7 +208,7 @@ function drawHoleFall(ctx, at, s, ms, radius, dir, skin, now) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.clip();
-    drawPlayer(ctx, cx, py, rad, dir, null, null, skin, now);
+    drawPlayer(ctx, cx, py, rad, dir, null, null);
     ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.25) / 0.6));
     ctx.beginPath();
     ctx.arc(cx, py, rad * 1.05, 0, Math.PI * 2);
@@ -291,9 +291,10 @@ function drawGoal(ctx, goal, s, now, scale, flashAt, finished) {
   ctx.restore();
 }
 
-// Schweif hinter der Figur: zieht beim Rutschen weich hinterher - vorne fast so breit wie die
-// Figur, hinten spitz und durchsichtig - und schnurrt nach dem Stopp in die Figur zurück. Nie
-// länger als der bisher gerutschte Weg, also nie über dem Feld, von dem sie losgerutscht ist.
+// Schweif hinter der Figur: zieht beim Rutschen weich hinterher und schnurrt nach dem Stopp in die
+// Figur zurück. Nie länger als der bisher gerutschte Weg, also nie über dem Feld, von dem sie
+// losgerutscht ist. Die Form (vorne fast so breit wie die Figur, hinten spitz und durchsichtig)
+// zeichnet shared/js/cosmetics-draw.js - dieselbe wie die Drift-Spur in den anderen Spielen.
 // marks: [{ from, to, dir, start, duration, cutAt? }] - cutAt = Rutscher wurde mittendrin
 // zurückgenommen, der Schweif zieht sich dann dort zusammen
 const TRAIL_MAX = 2.4; // höchstens so viele Felder lang
@@ -309,21 +310,9 @@ function drawTrails(ctx, marks, s, now, radius) {
     if (len < 0.05 || radius <= 0) continue;
     const d = SL.DIRS[m.dir];
     const hx = (m.from.c + 0.5 + d.dc * head) * s, hy = (m.from.r + 0.5 + d.dr * head) * s;
-    const tx = hx - d.dc * len * s, ty = hy - d.dr * len * s;
-    const w = radius * 0.85; // halbe Breite vorne - die Ränder verschwinden hinter der Figur
-    const nx = -d.dr * w, ny = d.dc * w; // quer zur Fahrtrichtung
-    // Kontrollpunkte kurz hinter der Figur: der Schweif bleibt lange breit und läuft dann spitz aus
-    const bx = hx - d.dc * len * s * 0.45, by = hy - d.dr * len * s * 0.45;
-    const g = ctx.createLinearGradient(tx, ty, hx, hy);
-    g.addColorStop(0, "rgba(43,36,32,0)");
-    g.addColorStop(1, "rgba(43,36,32,0.2)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(tx, ty);
-    ctx.quadraticCurveTo(bx + nx, by + ny, hx + nx, hy + ny);
-    ctx.lineTo(hx - nx, hy - ny);
-    ctx.quadraticCurveTo(bx - nx, by - ny, tx, ty);
-    ctx.fill();
+    const tail = { x: hx - d.dc * len * s, y: hy - d.dr * len * s };
+    // halbe Breite vorne fast wie die Figur - die Ränder verschwinden hinter ihr
+    SL.CosmeticsDraw.drawStreak(ctx, [tail, { x: hx, y: hy }], radius * 0.85);
   }
 }
 
@@ -412,9 +401,9 @@ function goalBody(radius, s, ms) {
 
 // deform: { dir, along } - along > 0 streckt in Fahrtrichtung, < 0 staucht (Aufprall). Beim
 // Stauchen rückt die Mitte zur Wand, damit die Figur an der Wand plattgedrückt wird statt von ihr
-// wegzuschrumpfen. body: Form im Ziel (goalBody), sonst Kreis. Körper im Skin-Muster + Augen (die
-// Pupillen schauen in Rutschrichtung) kommen aus shared/js/cosmetics-draw.js, wie im Shop.
-function drawPlayer(ctx, x, y, radius, dir, deform, body, skin, now) {
+// wegzuschrumpfen. body: Form im Ziel (goalBody), sonst Kreis. Körper + Augen (die Pupillen schauen
+// in Rutschrichtung) kommen aus shared/js/cosmetics-draw.js, wie im Shop.
+function drawPlayer(ctx, x, y, radius, dir, deform, body) {
   if (radius <= 0.5) return;
   ctx.save();
   if (deform && deform.along) {
@@ -428,6 +417,6 @@ function drawPlayer(ctx, x, y, radius, dir, deform, body, skin, now) {
     ctx.translate(-x, -y);
   }
   const look = dir ? { x: SL.DIRS[dir].dc, y: SL.DIRS[dir].dr } : null;
-  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, skin, look, now, body);
+  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, look, body);
   ctx.restore();
 }

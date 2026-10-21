@@ -23,6 +23,11 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
   ohne Rücksprache.
 - Strecken/Karten ändern → `SL.LEVEL_SET_VERSION` in `levels.js` erhöhen (alte Bestwerte verfallen).
 - Kein Test-Framework. Prüfen per Node-Tool (siehe unten) und im Browser.
+- **Vor jedem Commit `npm run stamp`** (`tools/stamp.js`): hängt Inhalts-Hashes (`?v=…`) an alle
+  eingebundenen JS/CSS-Dateien der HTML-Seiten. Ohne das mischen Handys nach einem Deploy alte
+  (GitHub-Pages-Cache, 10 Min.) und neue Skripte – wahrscheinlichste Ursache, warum der
+  Endlosmodus am 20.10.2026 auf dem Handy nicht lief. Meldet auch Pfade mit falscher
+  Groß-/Kleinschreibung.
 
 ## Starten & im Browser prüfen
 
@@ -38,8 +43,7 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
 |---|---|
 | `css/base.css` | Farben (`--ink`, `--bg`, `--border` …), Schrift, Buttons, Logo, Figur |
 | `css/game.css` | Gemeinsames Spielseiten-Gerüst: Menü, Level-Auswahl, HUD, Pause, Ergebnis, Daily-Karte, Einstellungen, Toast, `.canvas-wrap/.canvas-frame`, Tipp-Steuerung |
-| `js/profile.js` | `SL.Profile`: `coins() addCoins() spend() levelPay() dailyBonus() completeDaily(id,key) streak() bestStreak() dailiesOn()`, Shop-Besitz (`ownedCosmetics buyCosmetic equipCosmetic refundCosmetics`), Aufgaben (`questDone completeQuest`), `onChange()` – liest/schreibt jedes Mal frisch |
-| `js/quests.js` | `SL.QUESTS` (id, text, optional `check()` fürs Profil) + `SL.Quests`: `get isDone complete sync`. Spiel-Aufgaben meldet jedes Spiel in `economy.js → checkQuests(state)` (beim Start + nach jedem Ergebnis, aus dem Spielstand → zählt rückwirkend). |
+| `js/profile.js` | `SL.Profile`: `coins() addCoins() spend() levelPay() dailyBonus() completeDaily(id,key) streak() bestStreak() dailiesOn()`, Shop (`equippedCosmetic(type) equipCosmetic(type, id|null)`), `onChange()` – liest/schreibt jedes Mal frisch. `migrateShop` erstattet einmalig alte Käufe (Skins/Spuren, die es nicht mehr gibt). |
 | `js/days.js` | `SL.Days`: Tages-Schlüssel `YYYY-MM-DD`, `between`, `parse`, `timeUntilNext` |
 | `js/rng.js` | `SL.createRng(seed)` (mulberry32) |
 | `js/audio.js` | `SL.Audio` (Web-Audio-Engine + gemeinsame Töne, `add/play/tone/noise/ensure`), `SL.Haptics.vibrate` |
@@ -47,22 +51,22 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
 | `js/settings.js` | Einstellungs-Overlay, liest Zeilen aus dem HTML (`data-setting`) |
 | `js/games.js` | `SL.GAMES` – Kacheln der Startseite |
 | `js/links.js` | Ordner-Links auch bei `file://` |
-| `js/cosmetics.js` | Katalog: Listen `SKINS`/`TRAILS` (je Item `rarity`, `quest`, Muster/Stil) → `SL.COSMETIC_TYPES`, `SL.COSMETICS`; `SL.RARITIES` (Preis je Seltenheit, `secret` = Aufgabe im Shop verborgen: Legendär, Mythisch); `RETIRED` = ausgemusterte IDs, Käufer bekommen Coins zurück. `SL.Cosmetics`: `owns isUnlocked isSecret equipped unlockedBy(fn) buy equip`. **Neuer Skin = eine Zeile.** |
-| `js/cosmetics-draw.js` | Aussehen als Einträge: `SL.SkinPatterns[name] = { draw, css, ring?, outline?, animated? }`, `SL.TrailStyles[name] = { draw, animated? }`. `SL.CosmeticsDraw`: `fillBody drawFigure(look-Vektor) drawTrail isAnimated applyMascotLook drawSkinPreview drawScenePreview` (IIFE). **Neues Muster = ein Eintrag.** |
+| `js/cosmetics.js` | Katalog: `SKINS` (nur „Standard“) und `TRAILS` (je Spiel eine: Maze/Drift/Leap, `game` + `style`) → `SL.COSMETIC_TYPES`, `SL.COSMETICS`. `SL.Cosmetics`: `get equipped(type) trailFor(gameId) equip(id) unequip(type)`. Alles frei, keine Preise. |
+| `js/cosmetics-draw.js` | `SL.TrailStyles[style].draw(ctx, points, r)` (`dots` Maze, `streak` Drift, `growing` Leap; r = Figur-Radius, damit jede Spur in jedes Spiel passt). `SL.CosmeticsDraw`: `drawFigure(ctx,x,y,r,look,body?) drawTrail(ctx,points,r,trail) drawStreak drawSkinPreview drawScenePreview` (IIFE). |
 
 Startseite: `index.html` + `hub/hub.js|css`.
 Shop: `shop/index.html|shop.js|shop.css` – eigene Seite im Spielseiten-Gerüst (`game.css`, ein
 Screen, Kopfzeile sticky), alles untereinander: Dein Look, dann je Kategorie eine Abteilung (Kopf
 wie die Kapitel der Level-Auswahl). Erreichbar über den Shop-Knopf im Menü jedes Spiels
 (`../../shop/?from=<id>`, „Zurück“ führt dorthin; `links.js` hängt bei `file://` index.html vor `?` ein).
-**Freischalten (Wunsch des Nutzers):** Jedes Item gehört zu einer Aufgabe. Vorher im Shop nur ein
-graues „?“ mit Namen „???“, darunter die Aufgabe (Gewöhnlich/Selten/Episch) bzw. „???“ (Legendär,
-Mythisch). Nach der Aufgabe sichtbar und mit Coins kaufbar (Preis aus der Seltenheit). Skins sollen
-besonders sein und zur Aufgabe passen (keine bloßen Farbvarianten). Ergebnis-Screens zeigen „Neu
-im Shop freigeschaltet: …“ (`SL.Cosmetics.unlockedBy`), im Leap-Endlosmodus als schwebender Text.
-Alle drei Spiele zeichnen Figur + Spur mit `SL.CosmeticsDraw` im ausgerüsteten Skin; Drift zeigt die
-Standard-Spur (Punkte) nicht, dort ist der eigene Schweif der Standard.
-Der Umzug alter Käufe aus dem Maze-Spielstand ins Profil passiert einmal in `profile.js` (`migrateShop`).
+**Stand (Wunsch des Nutzers, 21.10.2026):** Skins mit Aufgaben, Seltenheiten und Preisen wurden
+komplett gestrichen. Im Shop gibt es nur den Standard-Skin und die drei Spuren der Spiele (benannt
+nach dem Spiel), alles frei. Ohne ausgerüstete Spur hat jedes Spiel seine eigene
+(`SL.Cosmetics.trailFor`); eine ausgerüstete gilt in allen Spielen, „Jedes Spiel seine eigene“ im
+Shop legt sie wieder ab. Keine Aufgaben/Achievements – neue Shop-Inhalte nur nach Rücksprache.
+Drift zeichnet seinen eigenen Schweif weiter aus den Rutschern (`drawTrails` in renderer.js, zieht
+sich nach dem Stopp zurück) mit derselben Form (`SL.CosmeticsDraw.drawStreak`); Leap hängt die
+Figur-Position als letzten Spur-Punkt an.
 
 ## Gemeinsames Muster jedes Spiels (`games/<id>/js/`)
 
@@ -78,8 +82,7 @@ Alle Spiele: 30 Level in 3 Kapiteln, Freischalten mit Coins.
 - `maze.js`: `SL.generateMaze`, Zellen `SL.WALL/SL.PATH`, `findShortestPath`, `computeCheckpoints`.
 - `game.js`: `SL.GameSession` – Wand = zurück zum Start/Checkpoint, Uhr läuft weiter (Sterne nach Zeit).
 - `levels.js`: Seeds in `LEVEL_SEEDS` (von `npm run seeds` geschrieben).
-- Figur + Spur zeichnet `renderer.js` mit `SL.CosmeticsDraw` im ausgerüsteten Skin; die Maskottchen
-  (Pause/Ergebnis) bekommen ihn per `SL.CosmeticsDraw.applyMascotLook` (in ui.js `applyPlayerLook`).
+- Figur + Spur zeichnet `renderer.js` mit `SL.CosmeticsDraw` (Spur = `SL.Cosmetics.trailFor("maze")`).
 - Tools: `npm run seeds`, `npm run maze-preview` (erzeugt `preview.svg`).
 
 ## Drift (`games/drift/`) – Eis-Rutsch-Puzzle ("Slide"-Spiel)

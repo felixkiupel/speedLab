@@ -54,13 +54,11 @@ h1, h2 { line-height: 1.15; }
 }
 
 /* ---------- FIGUR ---------- */
-/* Das Gesicht unserer Figur - prozentual aufgebaut, damit es in jeder Größe passt.
-   Hintergrund/Kontur kommen aus dem ausgerüsteten Skin (Maze: ui.js -> applyPlayerLook). */
+/* Das Gesicht unserer Figur - prozentual aufgebaut, damit es in jeder Größe passt */
 .face {
   position: relative;
   border-radius: 50%;
-  background: var(--player-bg, var(--ink));
-  box-shadow: var(--player-ring, none);
+  background: var(--ink);
 }
 .face .eye {
   position: absolute;
@@ -69,7 +67,7 @@ h1, h2 { line-height: 1.15; }
   height: 26%;
   background: var(--bg);
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(43, 36, 32, 0.6); /* hält das Augenweiß auf hellen Skins sichtbar */
+  box-shadow: 0 0 0 1px rgba(43, 36, 32, 0.6); /* hält das Augenweiß auch auf hellem Körper sichtbar */
 }
 .face .eye.left { left: 22%; }
 .face .eye.right { right: 22%; }
@@ -99,11 +97,8 @@ h1, h2 { line-height: 1.15; }
 }
 
 /* ---------- LOGO ---------- */
-/* Die Kugel neben dem Logo ist das Markenzeichen: immer Basis-Schwarz, egal welcher Skin
-   ausgerüstet ist (überschreibt die Skin-Variablen nur für dieses Element) */
+/* Die Kugel neben dem Logo ist das Markenzeichen */
 .brand-mascot {
-  --player-bg: var(--ink);
-  --player-ring: none;
   width: 84px;
   height: 84px;
 }

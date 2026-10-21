@@ -1,5 +1,5 @@
 // Save/Load Wrapper um localStorage - nur der Maze-eigene Fortschritt. Coins, die Daily-Serie und
-// die Skins aus dem Shop liegen spielübergreifend im Profil (shared/js/profile.js).
+// der Look aus dem Shop liegen spielübergreifend im Profil (shared/js/profile.js).
 window.SL = window.SL || {};
 
 const SAVE_KEY = "speedlab_maze_v1";
@@ -35,7 +35,7 @@ SL.Storage = {
         state.levelResults = {};
         state.levelSet = SL.LEVEL_SET_VERSION;
       }
-      // Skins lagen früher hier - das Profil hat sie beim Laden schon übernommen (migrateShop)
+      // Gekaufte Skins lagen früher hier - das Profil hat sie beim Laden schon erstattet (migrateShop)
       delete state.ownedCosmetics;
       delete state.equipped;
       delete state.equippedCosmetic;

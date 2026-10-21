@@ -18,8 +18,8 @@ const GOAL_HALF = 1.3; // halbe Seitenlänge des Ziel-Rahmens in Figur-Radien
 
 SL.Renderer = {
   // v: { session, now (performance.now), w, h (Bildschirm-Pixel), scale, pixelRatio, cam {x,y},
-  //      effects, shake {x,y}, flash 0..1, guide (Ring an), trail [{x,y,seed}],
-  //      skin, trailStyle (ausgerüstet im Shop, shared/js/cosmetics.js),
+  //      effects, shake {x,y}, flash 0..1, guide (Ring an), trail [{x,y}],
+  //      trailStyle (Spur aus dem Shop, shared/js/cosmetics.js - Standard sind die Leap-Punkte),
   //      hits Map(pointId -> Zeit des Absprungs), squash {at, kind: "jump" | "land"} }
   render(ctx, v) {
     const { session, now, w, h, scale: s, pixelRatio: pr, cam } = v;
@@ -88,9 +88,9 @@ SL.Renderer = {
       drawPoint(ctx, p.x, y, p.kind);
     }
 
-    // Spur aus dem Shop über die zuletzt besuchten Positionen (Maßstab: etwa zwei Figur-Breiten,
-    // damit die Standard-Punkte so groß sind wie früher die eigene Spur)
-    SL.CosmeticsDraw.drawTrail(ctx, v.trail, L.FIG_R * 2.2, v.trailStyle, v.skin, now);
+    // Spur über die zuletzt besuchten Positionen bis zur Figur
+    const fig = session.figureAt(now);
+    SL.CosmeticsDraw.drawTrail(ctx, [...v.trail, fig], L.FIG_R, v.trailStyle);
 
     // Land
     for (const pl of course.platforms) {
@@ -101,10 +101,9 @@ SL.Renderer = {
     }
 
     // Figur: im Ziel wird sie zum Quadrat (wie in Maze), sonst Kugel mit Blick in Flugrichtung
-    const fig = session.figureAt(now);
     const slope = session.slopeAt();
     const body = session.finishedAt != null ? goalBody(L.FIG_R, now - session.finishedAt) : null;
-    drawPlayer(ctx, fig.x, fig.y, L.FIG_R, slope, deform(v.squash, now, slope), body, v.skin, now);
+    drawPlayer(ctx, fig.x, fig.y, L.FIG_R, slope, deform(v.squash, now, slope), body);
 
     // Erschöpfung: kleine Leiste unter der Figur, läuft ab - leer = man kann wieder
     const tired = session.cooldownLeft(now);
@@ -273,9 +272,9 @@ function goalBody(radius, ms) {
   return { half: radius + (half - radius) * m, corner: radius + (corner - radius) * Math.min(1, m) };
 }
 
-// Körper im Skin-Muster + Augen kommen aus shared/js/cosmetics-draw.js, wie im Shop. Die Pupillen
-// schauen in Flugrichtung (Steigung -> Vektor).
-function drawPlayer(ctx, x, y, radius, slope, def, body, skin, now) {
+// Körper + Augen kommen aus shared/js/cosmetics-draw.js, wie im Shop. Die Pupillen schauen in
+// Flugrichtung (Steigung -> Vektor).
+function drawPlayer(ctx, x, y, radius, slope, def, body) {
   ctx.save();
   if (def) {
     ctx.translate(x, y);
@@ -291,7 +290,7 @@ function drawPlayer(ctx, x, y, radius, slope, def, body, skin, now) {
     ctx.translate(-x, -y);
   }
   const len = Math.hypot(1, slope);
-  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, skin, { x: 1 / len, y: slope / len }, now, body);
+  SL.CosmeticsDraw.drawFigure(ctx, x, y, radius, { x: 1 / len, y: slope / len }, body);
   ctx.restore();
 }
 
