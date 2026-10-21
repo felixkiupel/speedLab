@@ -97,10 +97,10 @@ und reicht `from` weiter). Gleiches Seiten-Gerüst wie der Shop.
   spielen es nur vor; die Kristall-Anzeige zählt erst nach dem Stillstand hoch. Walzen-Physik als
   Funktion der Zeit (Ausholen, Anlaufen, volle Fahrt, Bremsen mit easeOutBack aufs Zielfeld – das
   Bremsen startet, sobald das Ziel genau einen Bremsweg vor der Linie liegt; die Walzen bremsen
-  der Reihe nach). Trommel-Optik + Bewegungsunschärfe im Canvas, Spannung auf Walze 3, wenn 1+2
-  gleich sind (die ganze Walze blinkt gefüllt, kein Rahmen). Hebel (ziehen oder antippen), Knopf,
-  Leertaste; erneut drücken = schneller stoppen. Knopf: „Drehen“ immer schwarz (kein Hover-Umfärben,
-  verliert nach dem Klick den Fokus), „Stopp“ ausgegraut.
+  der Reihe nach). Flache Walzen (3 Reihen, mittlere hell, äußere im Halbschatten) + Bewegungsunschärfe
+  im Canvas, Spannung auf Walze 3, wenn 1+2 gleich sind (die ganze Walze blinkt gefüllt, kein
+  Rahmen). Großer runder Knopf oder Leertaste; erneut drücken = schneller stoppen. Knopf immer
+  schwarz (kein Hover-Umfärben, verliert nach dem Klick den Fokus), beim Laufen ausgegraut („Stopp“).
   Konfetti auf eigener Canvas über der ganzen Seite (`#slot-fx`).
 - **Look (Wunsch des Nutzers):** schwarz-weiß wie die Spiele, keine bunten Farben. Weiche Formen
   (runde Ecken) – nur die Sieben sticht heraus: klassische Automaten-7 (`sevenPath`: fetter Balken
@@ -109,10 +109,15 @@ und reicht `from` weiter). Gleiches Seiten-Gerüst wie der Shop.
   Nutzer fand eine kantige Western-7 aus Polygonen zu „zusammengewürfelt“ – nur glatte Kurven. Gewinn = „Licht aus“: das Walzenfenster dunkelt ab (`VEIL`), nur die Gewinner
   leuchten mit Lichthof und ploppen nacheinander rein; zwei gleiche: Symbol hell, drei gleiche:
   Holo-Silber mit Lichtschein wie die 100-%-Sterne in Leap (`HOLO_BASE/HOLO_SHINE`) plus kurzer
-  Blitz; Lauflichter blinken silbern. Beim nächsten Dreh geht das Licht wieder an. Kein
+  Blitz; die Lauflichter (= Lautsprecher-Gitter unten rechts) blinken silbern. Beim nächsten Dreh geht das Licht wieder an. Kein
   `shadowBlur` (bremst auf iPhones) – Glühen über Radial-Verläufe; die Konfetti-Canvas wird nur
-  gezeichnet, solange Konfetti fliegt (max. 2× Auflösung). Das Gehäuse steht immer mittig, der Hebel
-  hängt außen rechts im Platz `--lever-w` der `.slot-stage` (Handy: 30 px).
+  gezeichnet, solange Konfetti fliegt (max. 2× Auflösung).
+- **Aufbau nach Referenzbild des Nutzers (21.10.2026):** Figur schaut oben übers Gehäuse,
+  „speedSlots“-Logo + „Kristall-Automat“, dunkles Walzenfenster mit Meldungs-Leiste oben und
+  Einsatz/Gewinn unten (Monospace), Pfeile der Gewinnlinie per CSS, runde Einsatz-Knöpfe (gewählt =
+  hell, eingedrückt), großer Dreh-Knopf, Ton-Schalter, Füße. Kein Hebel mehr. Gewinntabelle als
+  Karte mit dunklem Kopf. Handy untereinander, ab 820 px nebeneinander. Gewackelt wird `#slot-stage`
+  (Figur + Gehäuse).
 - Kristall-Icon (`.crystal-icon`, base.css) = um 45° gedrehtes Quadrat mit weichen Ecken.
 - `sounds.js`: `slotPull slotTick slotStop slotTease slotWin(tier) slotJackpot crystalTick`.
 

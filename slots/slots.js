@@ -1,6 +1,6 @@
 // Slots-Seite: der Automat, an dem man Coins gegen Kristalle tauscht - die zweite Währung, mit der
 // es später Skins gibt. Logik und Quoten: machine.js, Töne: sounds.js. Hier: Walzen bewegen und
-// zeichnen, Hebel, Knopf, Einsatz und die Gewinn-Show. Erreichbar nur über den Shop (?from= wird
+// zeichnen, Knopf, Einsatz und die Gewinn-Show. Erreichbar nur über den Shop (?from= wird
 // durchgereicht, damit "Zurück" wieder im richtigen Spiel landet).
 //
 // Ein Dreh steht beim Drücken fest und ist sofort gebucht (Coins weg, Kristalle gutgeschrieben -
@@ -11,6 +11,7 @@
   const SAVE_KEY = "speedlab_slots_v1"; // nur Einsatz-Stufe und Ton - die Währungen liegen im Profil
   const INK = "#2b2420";
   const CREAM = "#fbf7f0";
+  const BAND = "#ede5d8"; // äußere Reihen im Walzenfenster (--panel in slots.css)
 
   // ---------- Bewegung der Walzen ----------
   // Kurz zurückziehen, anlaufen, volle Fahrt, abbremsen genau aufs Ziel-Feld mit kleinem
@@ -32,7 +33,6 @@
   const TEASE_BIG_MS = 1400;
   const REVEAL_MS = 160; // Pause zwischen letztem Einrasten und Gewinn
   const WIN_PULSE_MS = 2400; // so lange pulsieren die Gewinn-Symbole
-  const ANGLE = 0.62; // Winkel zwischen zwei Feldern auf der Trommel (rad)
 
   const easeOutBack = (u) => 1 + (BACK + 1) * Math.pow(u - 1, 3) + BACK * Math.pow(u - 1, 2);
   const easeOutBackSlope = (u) => 3 * (BACK + 1) * Math.pow(u - 1, 2) + 2 * BACK * (u - 1);
@@ -83,6 +83,7 @@
   let teaseStep = 0, lastTeaseAt = 0;
 
   const machine = document.getElementById("slot-machine");
+  const stage = document.getElementById("slot-stage");
   const canvas = document.getElementById("slot-reels");
   const ctx = canvas.getContext("2d");
   const fxCanvas = document.getElementById("slot-fx");
@@ -96,10 +97,7 @@
   const fx = new SL.Effects();
   fx.enabled = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const COIN_ICON = `<span class="coin-icon" aria-hidden="true"></span>`;
   const CRYSTAL_ICON = `<span class="crystal-icon" aria-hidden="true"></span>`;
-  const SOUND_ON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
-  const SOUND_OFF = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
 
   function loadSettings() {
     const fallback = { level: S.STAKES[0], sound: true };
@@ -125,7 +123,7 @@
 
   // ---------- Dreh ----------
 
-  // Hebel, Knopf, Leertaste: neuer Dreh - oder, wenn die Walzen schon laufen, schneller stoppen
+  // Knopf, Leertaste: neuer Dreh - oder, wenn die Walzen schon laufen, schneller stoppen
   function press() {
     SL.Audio.ensure();
     if (spinning()) slam();
@@ -262,7 +260,7 @@
       const [a, b, c] = result.symbols;
       if (SL.Profile.coins() < stakeOf(settings.level)) setMessage(nopeText(), true);
       else setMessage(a === c || b === c ? "Knapp daneben!" : "Leider nichts – nochmal?");
-      winEl.textContent = "0";
+      winEl.textContent = "--";
       updateControls();
       return;
     }
@@ -385,15 +383,13 @@
     if (view && view.w === w && dpr === newDpr) return;
     const dprChanged = dpr !== newDpr;
     dpr = newDpr;
-    const h = Math.round(Math.min(300, Math.max(150, w * 0.62)));
+    const h = Math.round(Math.min(270, Math.max(150, w * 0.62)));
     canvas.style.height = h + (canvas.offsetHeight - canvas.clientHeight) + "px"; // + Rahmen
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
-    const gap = 4;
+    const gap = 3;
     const reelW = (w - gap * 2) / 3;
-    view = { w, h, gap, reelW, cy: h / 2, R: (h / 2) * 0.97, reelX: (i) => i * (reelW + gap) };
-    lever.length = Math.min(96, machine.clientHeight * 0.24);
-    setLever(lever.angle);
+    view = { w, h, gap, reelW, cy: h / 2, cellH: h / 3, reelX: (i) => i * (reelW + gap) };
     if (dprChanged) renderPaytable();
     draw(performance.now());
   }
@@ -537,11 +533,14 @@
 
   function draw(now) {
     if (!view) return;
-    const { w, h, gap, reelW, cy, R } = view;
+    const { w, h, gap, reelW, cy, cellH } = view;
+    const top = cy - cellH / 2; // Oberkante der Gewinnlinie (mittlere Reihe)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = CREAM;
+    ctx.fillStyle = BAND;
     ctx.fillRect(0, 0, w, h);
-    const s = Math.min(reelW * 0.27, R * Math.sin(ANGLE) * 0.46);
+    ctx.fillStyle = CREAM;
+    ctx.fillRect(0, top, w, cellH);
+    const s = Math.min(reelW * 0.24, cellH * 0.33);
     const result = round && round.revealed && round.result.kind ? round.result : null;
     const since = result ? now - round.winAt : Infinity;
     const tease = teasing(now);
@@ -566,7 +565,7 @@
       const alpha = 1 / (1 + speed / 22);
       const smear = (r.v / 60) * 0.8; // Weg eines Frames in Feldern
       const base = Math.floor(r.pos);
-      for (let k = base - 3; k <= base + 4; k++) {
+      for (let k = base - 2; k <= base + 3; k++) {
         if (winning && k === r.pos) continue; // Gewinner kommen erst über den Schleier
         const id = r.strip[mod(k, r.n)];
         const d = k - r.pos;
@@ -577,14 +576,10 @@
       ctx.restore();
     });
 
-    // Trommel: oben und unten wird es dunkler
-    const shade = ctx.createLinearGradient(0, 0, 0, h);
-    shade.addColorStop(0, "rgba(43,36,32,0.34)");
-    shade.addColorStop(0.28, "rgba(43,36,32,0)");
-    shade.addColorStop(0.72, "rgba(43,36,32,0)");
-    shade.addColorStop(1, "rgba(43,36,32,0.34)");
-    ctx.fillStyle = shade;
-    ctx.fillRect(0, 0, w, h);
+    // Obere und untere Reihe liegen im Halbschatten: ihre Symbole werden grau
+    ctx.fillStyle = "rgba(237, 229, 216, 0.6)";
+    ctx.fillRect(0, 0, w, top);
+    ctx.fillRect(0, top + cellH, w, h - top - cellH);
 
     // Licht aus ...
     const veil = veilAt(now);
@@ -617,30 +612,18 @@
       }
     }
 
-    // Trennstege zwischen den Walzen und die Pfeile der Gewinnlinie links/rechts
+    // Trennstege zwischen den Walzen (die Pfeile der Gewinnlinie sind CSS, slots.css)
     ctx.fillStyle = INK;
     for (let i = 1; i < reels.length; i++) ctx.fillRect(view.reelX(i) - gap, 0, gap, h);
-    const a = Math.max(6, s * 0.28);
-    ctx.fillStyle = result ? "#cdd7e8" : INK; // bei Gewinn leuchten auch die Pfeile
-    ctx.beginPath();
-    ctx.moveTo(0, cy - a);
-    ctx.lineTo(a * 1.1, cy);
-    ctx.lineTo(0, cy + a);
-    ctx.moveTo(w, cy - a);
-    ctx.lineTo(w - a * 1.1, cy);
-    ctx.lineTo(w, cy + a);
-    ctx.fill();
   }
 
-  // Ein Feld auf der Trommel: d = Abstand zur Gewinnlinie in Feldern
+  // Ein Feld der Walze: d = Abstand zur Gewinnlinie in Feldern (positiv = darüber)
   function drawCell(cx, d, id, s, alpha, paint = null, scale = 1) {
-    const theta = d * ANGLE;
-    if (Math.abs(theta) >= Math.PI / 2) return;
-    const y = view.cy - view.R * Math.sin(theta);
+    if (Math.abs(d) > 2) return;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(cx, y);
-    ctx.scale(scale, Math.cos(theta) * scale);
+    ctx.translate(cx, view.cy - d * view.cellH);
+    ctx.scale(scale, scale);
     drawSymbol(ctx, id, s, paint);
     ctx.restore();
   }
@@ -660,105 +643,9 @@
     const shake = fx.getShakeOffset();
     const transform = shake.x || shake.y ? `translate(${shake.x.toFixed(1)}px, ${shake.y.toFixed(1)}px)` : "";
     if (transform !== lastShake) {
-      machine.style.transform = transform;
+      stage.style.transform = transform;
       lastShake = transform;
     }
-  }
-
-  // ---------- Hebel ----------
-  // Seitlich am Automaten, Drehpunkt auf halber Höhe. angle 0° = Kugel oben, 165° = ganz unten
-  // gezogen. Von vorn gesehen wandert die Kugel gerade nach unten und kommt dabei näher (größer).
-  const lever = {
-    el: document.getElementById("slot-lever"),
-    arm: null, knob: null, angle: 0, length: 90, drag: null, anim: null,
-  };
-  lever.arm = lever.el.querySelector(".lever-arm");
-  lever.knob = lever.el.querySelector(".lever-knob");
-  const LEVER_MAX = 165;
-  const LEVER_TRIGGER = 105; // ab hier löst Loslassen einen Dreh aus
-  const rad = (deg) => (deg * Math.PI) / 180;
-
-  function setLever(angle) {
-    lever.angle = angle;
-    const a = rad(angle);
-    lever.arm.style.height = lever.length + "px";
-    lever.arm.style.transform = `translateX(-50%) scaleY(${Math.cos(a).toFixed(4)})`;
-    lever.knob.style.transform = `translate(-50%, -50%) translateY(${(-lever.length * Math.cos(a)).toFixed(2)}px) scale(${(1 + 0.3 * Math.sin(a)).toFixed(3)})`;
-  }
-
-  // Ganz runterziehen (then = was unten passiert), danach federt er zurück
-  function pullLever(ms, then) {
-    lever.anim = { kind: "pull", from: lever.angle, start: performance.now(), ms, then };
-    kick();
-  }
-
-  function releaseLever() {
-    lever.anim = { kind: "spring", from: lever.angle, start: performance.now() };
-    kick();
-  }
-
-  function updateLever(now) {
-    const anim = lever.anim;
-    if (!anim || lever.drag) return;
-    const t = now - anim.start;
-    if (anim.kind === "pull") {
-      const u = Math.min(1, t / anim.ms);
-      setLever(anim.from + (LEVER_MAX - anim.from) * u * u);
-      if (u < 1) return;
-      if (anim.then) anim.then();
-      releaseLever();
-      return;
-    }
-    // Zurückfedern: gedämpfte Schwingung um die Ruhelage
-    if (t > 900) {
-      setLever(0);
-      lever.anim = null;
-      return;
-    }
-    setLever(anim.from * Math.exp(-t / 150) * Math.cos((t / 1000) * Math.PI * 2 * 2.6));
-  }
-
-  function bindLever() {
-    const el = lever.el;
-    el.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (lever.anim && lever.anim.kind === "pull") return;
-      e.preventDefault();
-      SL.Audio.ensure();
-      lever.anim = null;
-      lever.drag = { id: e.pointerId, y0: e.clientY, ball0: -lever.length * Math.cos(rad(lever.angle)), moved: false, armed: false };
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
-      el.classList.add("grabbing");
-    });
-    el.addEventListener("pointermove", (e) => {
-      const drag = lever.drag;
-      if (!drag || e.pointerId !== drag.id) return;
-      const dy = e.clientY - drag.y0;
-      if (Math.abs(dy) > 4) drag.moved = true;
-      // Die Kugel folgt dem Finger
-      const L = lever.length;
-      const ball = Math.max(-L, Math.min(-L * Math.cos(rad(LEVER_MAX)), drag.ball0 + dy));
-      setLever((Math.acos(-ball / L) * 180) / Math.PI);
-      if (!drag.armed && lever.angle >= LEVER_TRIGGER) {
-        drag.armed = true;
-        SL.Audio.play("click");
-        SL.Haptics.vibrate(8);
-      } else if (drag.armed && lever.angle < LEVER_TRIGGER) {
-        drag.armed = false;
-      }
-    });
-    const end = (e) => {
-      const drag = lever.drag;
-      if (!drag || e.pointerId !== drag.id) return;
-      lever.drag = null;
-      el.classList.remove("grabbing");
-      if (e.type === "pointercancel") releaseLever();
-      else if (!drag.moved) pullLever(170, press); // nur angetippt: zieht sich selbst
-      else if (lever.angle >= LEVER_TRIGGER) pullLever(60, press);
-      else releaseLever();
-    };
-    el.addEventListener("pointerup", end);
-    el.addEventListener("pointercancel", end);
   }
 
   // ---------- Bedienung ----------
@@ -777,10 +664,11 @@
     const busy = spinning();
     const coins = SL.Profile.coins();
     const stake = stakeOf(settings.level);
-    spinBtn.innerHTML = busy ? "Stopp" : `Drehen<span class="btn-cost">${stake}${COIN_ICON}</span>`;
+    document.getElementById("slot-spin-label").textContent = busy ? "Stopp" : "Dreh";
+    spinBtn.setAttribute("aria-label", busy ? "Stopp" : `Drehen für ${stake} Coins`);
     spinBtn.classList.toggle("is-stop", busy);
     spinBtn.disabled = !busy && coins < stake;
-    document.getElementById("slot-stake").innerHTML = `${stake}${COIN_ICON}`;
+    document.getElementById("slot-stake").textContent = stake;
     document.querySelectorAll("#slot-stakes button").forEach((btn) => {
       const level = Number(btn.dataset.level);
       btn.classList.toggle("active", level === settings.level);
@@ -788,27 +676,28 @@
       btn.disabled = busy;
     });
     const sound = document.getElementById("slot-sound");
-    sound.innerHTML = settings.sound ? SOUND_ON : SOUND_OFF;
+    sound.innerHTML = `<span class="slot-toggle-knob"></span>${settings.sound ? "Ton an" : "Ton aus"}`;
     sound.setAttribute("aria-pressed", String(settings.sound));
-    if (!busy && (messageIsHint || !messageEl.textContent)) setMessage(coins >= stake ? "Zieh am Hebel – oder drück Drehen" : nopeText(), true);
-    lever.el.classList.toggle("disabled", !busy && coins < stake);
+    if (!busy && (messageIsHint || !messageEl.textContent)) setMessage(coins >= stake ? "Drück Dreh" : nopeText(), true);
   }
 
   function renderStakes() {
     document.getElementById("slot-stakes").innerHTML = S.STAKES
-      .map((level) => `<button type="button" data-level="${level}">${stakeOf(level)}${COIN_ICON}</button>`).join("");
+      .map((level) => `<button type="button" data-level="${level}" aria-label="${stakeOf(level)} Coins">${stakeOf(level)}</button>`).join("");
   }
 
   // Gewinntabelle: drei gleiche je Symbol, dazu "2 gleiche von links" - Beträge für den Einsatz
   function renderPaytable() {
     const level = settings.level;
     const row = (ids, label, pay) => `<div class="pay-row">
-      <span class="pay-symbols">${ids.map((id) => (id ? `<canvas class="pay-symbol" data-symbol="${id}"></canvas>` : `<span class="pay-any">?</span>`)).join("")}</span>
+      <span class="pay-symbols">${ids.map((id) => (id ? `<canvas class="pay-symbol" data-symbol="${id}"></canvas>` : `<span class="pay-any"></span>`)).join("")}</span>
       <span class="pay-label">${label}</span>
+      <span class="pay-dots" aria-hidden="true"></span>
       <b class="pay-amount">${pay * level}${CRYSTAL_ICON}</b>
     </div>`;
     const rows = [...S.SYMBOLS].reverse().map((sym) => row([sym.id, sym.id, sym.id], `3× ${sym.name}`, sym.pay3));
-    rows.push(row(["dot", "dot", null], "2 gleiche von links", S.evaluate(["dot", "dot", "star"]).pay));
+    rows.push(row(["dot", "dot", null], "2 gleiche", S.evaluate(["dot", "dot", "star"]).pay));
+    document.getElementById("paytable-stake").textContent = `bei ${stakeOf(level)} Einsatz`;
     document.getElementById("paytable").innerHTML = rows.join("");
     document.querySelectorAll(".pay-symbol").forEach((c) => {
       const size = c.clientWidth;
@@ -816,11 +705,10 @@
       c.height = Math.round(size * dpr);
       const x = c.getContext("2d");
       x.setTransform(dpr, 0, 0, dpr, size / 2 * dpr, size / 2 * dpr);
-      drawSymbol(x, c.dataset.symbol, size * 0.42);
+      drawSymbol(x, c.dataset.symbol, size * 0.46);
     });
     const odds = S.odds();
-    document.getElementById("paytable-note").textContent =
-      `Gewinnchance ${Math.round(odds.hitRate * 100)} % pro Dreh · ein Kristall kostet im Schnitt rund ${Math.round(odds.coinsPerCrystal / 10) * 10} Coins`;
+    document.getElementById("paytable-note").textContent = `Mittlere Reihe zählt · Gewinnchance ≈${Math.round(odds.hitRate * 100)} %`;
   }
 
   function onKeydown(e) {
@@ -830,14 +718,13 @@
     if (e.target.closest && e.target.closest("button, a, input")) return;
     e.preventDefault();
     press();
-    if (!lever.drag) pullLever(90);
   }
 
   // So lange bewegt sich nach einem Gewinn noch etwas (Puls, bei drei gleichen der Holo-Schein)
   const winShowMs = (result) => Math.max(WIN_PULSE_MS, result.kind === "three" ? SHINE_MS * SHINE_ROUNDS : 0) + 2 * POP_STAGGER_MS;
 
   // ---------- Schleife ----------
-  // Läuft nur, solange sich etwas bewegt (Walzen, Hebel, Zahlen, Konfetti, Gewinn-Puls)
+  // Läuft nur, solange sich etwas bewegt (Walzen, Zahlen, Konfetti, Gewinn-Puls)
 
   let rafId = null;
   let lastFrame = 0;
@@ -854,12 +741,11 @@
     updateReels(now);
     if (round && !round.revealed && round.revealAt != null && now >= round.revealAt) reveal(now);
     updateTease(now);
-    updateLever(now);
     updateTweens(now);
     fx.update(dt);
     draw(now);
     drawFx();
-    const busy = spinning() || lever.anim || tweens.size || fx.particles.length || fx.texts.length || fx.shakeMs > 0
+    const busy = spinning() || tweens.size || fx.particles.length || fx.texts.length || fx.shakeMs > 0
       || (round && round.revealed && round.result.kind && now - round.winAt < winShowMs(round.result));
     rafId = busy ? requestAnimationFrame(frame) : null;
   }
@@ -874,14 +760,12 @@
     SL.Audio.setEnabled(settings.sound);
     syncWallet();
     renderStakes();
-    bindLever();
     layout(); // zeichnet beim ersten Mal auch die Gewinntabelle
     updateControls();
 
     spinBtn.addEventListener("click", () => {
       spinBtn.blur();
       press();
-      if (!lever.drag) pullLever(90);
     });
     document.getElementById("slot-stakes").addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-level]");

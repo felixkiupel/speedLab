@@ -18,8 +18,8 @@
        weiter, damit man von dort ins richtige Spiel zurückkommt). -->
   <section class="screen active slots-screen">
     <header class="topbar">
-      <a id="slots-back" class="btn btn-ghost btn-back" href="../shop/">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Shop
+      <a id="slots-back" class="btn btn-ghost btn-back" href="../shop/" aria-label="Zurück zum Shop">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="btn-back-label">Shop</span>
       </a>
       <h2>Slots</h2>
       <div class="coin-pill wallet-pill">
@@ -28,42 +28,55 @@
       </div>
     </header>
 
+    <!-- Handy: Automat und Gewinntabelle untereinander, PC: nebeneinander (slots.css) -->
     <div class="slots">
-      <!-- Der Automat, mittig. Gedreht wird per Hebel (ziehen oder antippen), Knopf oder
-           Leertaste; noch mal drücken, während die Walzen laufen, stoppt sie schneller. -->
-      <div class="slot-stage">
+      <!-- Der Automat. Gedreht wird per Knopf oder Leertaste; noch mal drücken, während die
+           Walzen laufen, stoppt sie schneller. Die Figur schaut oben übers Gehäuse. -->
+      <div id="slot-stage" class="slot-stage">
+        <span class="mascot face slot-mascot" aria-hidden="true"><span class="eye left"></span><span class="eye right"></span></span>
         <div id="slot-machine" class="slot-machine">
-          <div class="slot-lights" aria-hidden="true">
-            <i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i>
+          <div class="slot-brand">
+            <div class="logo-word slot-logo" aria-label="speedSlots"><span class="logo-speed">speed</span><span class="logo-lab">Slots</span></div>
+            <div class="logo-tag">Kristall-Automat</div>
           </div>
+
           <div class="slot-window">
-            <canvas id="slot-reels" aria-label="Walzen"></canvas>
+            <p id="slot-message" class="slot-message" role="status"></p>
+            <div class="slot-reels-wrap">
+              <canvas id="slot-reels" aria-label="Walzen"></canvas>
+            </div>
+            <div class="slot-displays">
+              <span class="slot-display">Einsatz <b id="slot-stake">40</b></span>
+              <span id="slot-win-box" class="slot-display">Gewinn <b id="slot-win">--</b></span>
+            </div>
           </div>
-          <div class="slot-displays">
-            <div class="slot-display"><span>Einsatz</span><b id="slot-stake">40</b></div>
-            <div id="slot-win-box" class="slot-display"><span>Gewinn</span><b id="slot-win">–</b></div>
-          </div>
-          <p id="slot-message" class="slot-message" role="status"></p>
+
           <div class="slot-controls">
-            <div id="slot-stakes" class="segmented slot-stakes" role="group" aria-label="Einsatz"></div>
-            <button id="slot-sound" class="btn btn-icon btn-ghost" type="button" aria-label="Töne an/aus"></button>
+            <div class="slot-control">
+              <div id="slot-stakes" class="slot-stakes" role="group" aria-label="Einsatz"></div>
+              <span class="slot-caption">Einsatz</span>
+            </div>
+            <div class="slot-control">
+              <button id="slot-spin" class="slot-spin" type="button" aria-label="Drehen"></button>
+              <span id="slot-spin-label" class="slot-caption">Dreh</span>
+            </div>
           </div>
-          <button id="slot-spin" class="btn btn-primary slot-spin" type="button"></button>
-          <!-- Hebel hängt außen rechts am Gehäuse - das Gehäuse selbst bleibt mittig -->
-          <div id="slot-lever" class="slot-lever" aria-hidden="true">
-            <span class="lever-mount"></span>
-            <span class="lever-arm"></span>
-            <span class="lever-knob"></span>
+
+          <div class="slot-bottom">
+            <button id="slot-sound" class="slot-toggle" type="button"></button>
+            <!-- Lautsprecher-Gitter = Lauflichter: beim Drehen wandert ein Licht, bei Gewinn
+                 blinkt alles in Holo-Silber. --i = Nummer der Lampe. -->
+            <div class="slot-lights" aria-hidden="true">
+              <i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:13"></i><i style="--i:12"></i><i style="--i:11"></i><i style="--i:10"></i><i style="--i:9"></i><i style="--i:8"></i><i style="--i:7"></i>
+            </div>
           </div>
         </div>
       </div>
 
       <section class="slot-paytable" aria-labelledby="paytable-title">
-        <header class="chapter-head">
-          <div class="chapter-title">
-            <h3 id="paytable-title">Gewinne</h3>
-            <p>Gewertet wird die mittlere Reihe – Gewinne in Kristallen, für deinen Einsatz.</p>
-          </div>
+        <header class="paytable-head">
+          <h3 id="paytable-title"><span class="narrow-only">Gewinne</span><span class="wide-only">Gewinntabelle</span></h3>
+          <span id="paytable-stake"></span>
         </header>
         <div id="paytable" class="paytable"></div>
         <p id="paytable-note" class="paytable-note"></p>
