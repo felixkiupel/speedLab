@@ -477,6 +477,14 @@ a.game-card:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--lift)
 }
 .foot-credits { display: flex; flex-direction: column; gap: 3px; }
 .foot-logo { display: flex; align-items: baseline; font-size: 1.05rem; line-height: 1; color: var(--ink); }
+.foot-version {
+  margin-left: 0.45em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
 .foot-credits b { color: var(--text); font-weight: 700; }
 
 .foot-links { display: flex; gap: 8px; }

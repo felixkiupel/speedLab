@@ -27,6 +27,9 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
   `npm run slots-odds`). Die Slots zahlen nie Coins aus. Später sollen Skins Kristalle kosten.
 - Strecken/Karten ändern → `SL.LEVEL_SET_VERSION` in `levels.js` erhöhen (alte Bestwerte verfallen).
 - Kein Test-Framework. Prüfen per Node-Tool (siehe unten) und im Browser.
+- **Version** steht im Footer der Startseite (`index.html`, `.foot-version`): bei jeder
+  Veröffentlichung erhöhen – neues Feature 1.3 → 1.4, Fix 1.3 → 1.3.1. Bisher: Maze 1.0, Drift 1.1,
+  Leap 1.2, Kristalle + Slots 1.3. Daran sieht der Nutzer am Handy, ob er eine Seite aus dem Cache hat.
 - **Vor jedem Commit `npm run stamp`** (`tools/stamp.js`): hängt Inhalts-Hashes (`?v=…`) an alle
   eingebundenen JS/CSS-Dateien der HTML-Seiten. Ohne das mischen Handys nach einem Deploy alte
   (GitHub-Pages-Cache, 10 Min.) und neue Skripte – wahrscheinlichste Ursache, warum der
