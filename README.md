@@ -18,11 +18,14 @@ index.html            Startseite (Spieleauswahl, Coins, Daily-Serie)
 hub/                  Styles + Logik der Startseite
 shop/                 Shop-Seite: Skin und Spur der Figur für alle Spiele, alles frei
                       (Knopf im Menü jedes Spiels)
+slots/                Der Automat: Coins gegen Kristalle (nur über den Shop erreichbar)
+  machine.js          Symbole, Walzen, Gewinnplan, Quoten (ohne DOM)
+  tools/odds.js       Rechnet Trefferquote und Kurs exakt aus (npm run slots-odds)
 shared/               Gemeinsam für alle Seiten
   css/base.css        Farben, Schrift, Buttons, Logo, Figur (Startseite + Spiele)
   css/game.css        Aufbau jeder Spielseite: Menü, Level-Auswahl, HUD, Pause, Ergebnis,
                       Daily-Karte, Einstellungen, Toast
-  js/profile.js       Coins, Daily-Serie, ausgerüsteter Look (spielübergreifend)
+  js/profile.js       Coins, Kristalle, Daily-Serie, ausgerüsteter Look (spielübergreifend)
   js/cosmetics.js     Katalog des Shops: Standard-Skin + je Spiel eine Spur, Ausrüsten
   js/cosmetics-draw.js  Figur und Spuren zeichnen (Shop und Spiele)
   js/days.js          Tages-Schlüssel (Tageswechsel um Mitternacht Ortszeit)
@@ -51,8 +54,19 @@ tools/stamp.js        Versions-Hashes an alle Skripte/Styles in den HTML-Seiten 
 
 Alles liegt im `localStorage` des Browsers, jeweils mit dem Präfix `speedlab_`:
 
-- `speedlab_profile_v1` – Coins, Daily-Serie und der im Shop ausgerüstete Look, gilt für alle Spiele
+- `speedlab_profile_v1` – Coins, Kristalle, Daily-Serie und der im Shop ausgerüstete Look, gilt
+  für alle Spiele
 - `speedlab_<spiel>_v1` – Fortschritt und Einstellungen eines Spiels (z. B. `speedlab_maze_v1`)
+- `speedlab_slots_v1` – Einsatz-Stufe und Ton am Automaten
+
+## Kristalle und Slots
+
+Kristalle (Symbol: Raute) sind die zweite Währung (später für Skins). Es gibt sie nur am
+Automaten im Shop: Man zahlt Coins (40 / 80 / 200 pro Dreh) und gewinnt Kristalle – zu einem
+schlechten Kurs. Auf den Walzen: Punkt, Dreieck, Viereck, Sechseck, Stern und die Sieben als
+Jackpot. Gewertet wird die mittlere Reihe: drei gleiche zahlen je nach Symbol 2 bis 100 Kristalle,
+zwei gleiche von links 1 (alles × Einsatz-Stufe). Jeder 4.–5. Dreh gewinnt, ein Kristall kostet im Schnitt rund
+110 Coins. Quoten stehen in `slots/machine.js`; nach Änderungen `npm run slots-odds`.
 
 ## Neues Spiel hinzufügen
 

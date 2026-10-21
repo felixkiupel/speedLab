@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>speedLab Slots</title>
+<meta name="description" content="speedLab Slots – tausch Coins am Automaten gegen Kristalle.">
+<meta name="theme-color" content="#fbf7f0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../shared/css/base.css?v=d162b5fa">
+<link rel="stylesheet" href="../shared/css/game.css?v=05657b8b">
+<link rel="stylesheet" href="slots.css?v=2b36f222">
+</head>
+<body>
+<div id="app">
+
+  <!-- Ein Screen im Gerüst der Spielseiten. "Zurück" führt in den Shop (slots.js reicht ?from=
+       weiter, damit man von dort ins richtige Spiel zurückkommt). -->
+  <section class="screen active slots-screen">
+    <header class="topbar">
+      <a id="slots-back" class="btn btn-ghost btn-back" href="../shop/">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Shop
+      </a>
+      <h2>Slots</h2>
+      <div class="coin-pill wallet-pill">
+        <span aria-label="Coins"><span class="coin-icon" aria-hidden="true"></span><span id="wallet-coins">0</span></span>
+        <span aria-label="Kristalle"><span class="crystal-icon" aria-hidden="true"></span><span id="wallet-crystals">0</span></span>
+      </div>
+    </header>
+
+    <div class="slots">
+      <!-- Der Automat, mittig. Gedreht wird per Hebel (ziehen oder antippen), Knopf oder
+           Leertaste; noch mal drücken, während die Walzen laufen, stoppt sie schneller. -->
+      <div class="slot-stage">
+        <div id="slot-machine" class="slot-machine">
+          <div class="slot-lights" aria-hidden="true">
+            <i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i>
+          </div>
+          <div class="slot-window">
+            <canvas id="slot-reels" aria-label="Walzen"></canvas>
+          </div>
+          <div class="slot-displays">
+            <div class="slot-display"><span>Einsatz</span><b id="slot-stake">40</b></div>
+            <div id="slot-win-box" class="slot-display"><span>Gewinn</span><b id="slot-win">–</b></div>
+          </div>
+          <p id="slot-message" class="slot-message" role="status"></p>
+          <div class="slot-controls">
+            <div id="slot-stakes" class="segmented slot-stakes" role="group" aria-label="Einsatz"></div>
+            <button id="slot-sound" class="btn btn-icon btn-ghost" type="button" aria-label="Töne an/aus"></button>
+          </div>
+          <button id="slot-spin" class="btn btn-primary slot-spin" type="button"></button>
+          <!-- Hebel hängt außen rechts am Gehäuse - das Gehäuse selbst bleibt mittig -->
+          <div id="slot-lever" class="slot-lever" aria-hidden="true">
+            <span class="lever-mount"></span>
+            <span class="lever-arm"></span>
+            <span class="lever-knob"></span>
+          </div>
+        </div>
+      </div>
+
+      <section class="slot-paytable" aria-labelledby="paytable-title">
+        <header class="chapter-head">
+          <div class="chapter-title">
+            <h3 id="paytable-title">Gewinne</h3>
+            <p>Gewertet wird die mittlere Reihe – Gewinne in Kristallen, für deinen Einsatz.</p>
+          </div>
+        </header>
+        <div id="paytable" class="paytable"></div>
+        <p id="paytable-note" class="paytable-note"></p>
+      </section>
+    </div>
+  </section>
+
+</div>
+
+<!-- Partikel und Konfetti über der ganzen Seite -->
+<canvas id="slot-fx" class="slot-fx" aria-hidden="true"></canvas>
+
+<script src="../shared/js/links.js?v=86a0b5d1"></script>
+<script src="../shared/js/days.js?v=b36a7d57"></script>
+<script src="../shared/js/profile.js?v=288670ef"></script>
+<script src="../shared/js/rng.js?v=16d91e8a"></script>
+<script src="../shared/js/audio.js?v=9819aa53"></script>
+<script src="../shared/js/effects.js?v=850c1222"></script>
+<script src="machine.js?v=aa3c2bf1"></script>
+<script src="sounds.js?v=e8ddb313"></script>
+<script src="slots.js?v=f7a92960"></script>
+</body>
+</html>

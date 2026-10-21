@@ -13,14 +13,18 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
   zwei Dateien desselben Spiels = SyntaxError. ui.js-Dateien sind IIFEs (`SL.UI = (function(){…})()`).
 - `shared/` nur für Code, der in mehreren Spielen wirklich identisch ist – kein halb geteilter
   Flickenteppich. Renderer, Storage, Economy, ui.js bleiben pro Spiel.
-- Coins + Daily-Serie global (`SL.Profile`, `speedlab_profile_v1`), alles andere pro Spiel
-  (`speedlab_<id>_v1`). Alle Pfade relativ (später GitHub Pages).
+- Coins, Kristalle + Daily-Serie global (`SL.Profile`, `speedlab_profile_v1`), alles andere pro
+  Spiel (`speedlab_<id>_v1`, Slots: `speedlab_slots_v1` nur Einsatz + Ton). Alle Pfade relativ
+  (GitHub Pages).
 - **Coin-Regel (Wunsch des Nutzers, gilt für alle Spiele):** Level-Belohnung =
   `SL.Profile.levelPay(SL.levelUnlockCost(id + 1), sterne)` + eingesammelte Coins 1:1.
   3 Sterne = Preis des nächsten Levels + 2 (reicht direkt), 2 Sterne = 55 % (zwei Läufe nötig),
   1 Stern = 35 % (drei Läufe). Keine Einmal-Boni. Tagesbonus klein: `dailyBonus` = 10/Stern +
   Serie (max. 10). Freischalten soll eine Herausforderung bleiben – keine neuen Coin-Quellen
   ohne Rücksprache.
+- **Kristalle (zweite Währung, Wunsch des Nutzers 21.10.2026):** gibt es nur am Automaten
+  (`slots/`), bezahlt mit Coins, zu einem bewusst „bodenlosen“ Kurs (~112 Coins pro Kristall,
+  `npm run slots-odds`). Die Slots zahlen nie Coins aus. Später sollen Skins Kristalle kosten.
 - Strecken/Karten ändern → `SL.LEVEL_SET_VERSION` in `levels.js` erhöhen (alte Bestwerte verfallen).
 - Kein Test-Framework. Prüfen per Node-Tool (siehe unten) und im Browser.
 - **Vor jedem Commit `npm run stamp`** (`tools/stamp.js`): hängt Inhalts-Hashes (`?v=…`) an alle
@@ -41,9 +45,9 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
 
 | Datei | Inhalt |
 |---|---|
-| `css/base.css` | Farben (`--ink`, `--bg`, `--border` …), Schrift, Buttons, Logo, Figur |
+| `css/base.css` | Farben (`--ink`, `--bg`, `--border` …), Schrift, Buttons, Logo, Figur, `.coin-icon`/`.crystal-icon`, `.coin-pill`, `.wallet-pill` (Coins + Kristalle, Shop und Slots) |
 | `css/game.css` | Gemeinsames Spielseiten-Gerüst: Menü, Level-Auswahl, HUD, Pause, Ergebnis, Daily-Karte, Einstellungen, Toast, `.canvas-wrap/.canvas-frame`, Tipp-Steuerung |
-| `js/profile.js` | `SL.Profile`: `coins() addCoins() spend() levelPay() dailyBonus() completeDaily(id,key) streak() bestStreak() dailiesOn()`, Shop (`equippedCosmetic(type) equipCosmetic(type, id|null)`), `onChange()` – liest/schreibt jedes Mal frisch. `migrateShop` erstattet einmalig alte Käufe (Skins/Spuren, die es nicht mehr gibt). |
+| `js/profile.js` | `SL.Profile`: `coins() addCoins() spend() levelPay() dailyBonus() completeDaily(id,key) streak() bestStreak() dailiesOn()`, Kristalle (`crystals() playSlots(einsatz, gewinn)` – bucht einen Dreh in einem Schritt), Shop (`equippedCosmetic(type) equipCosmetic(type, id|null)`), `onChange()` – liest/schreibt jedes Mal frisch. `migrateShop` erstattet einmalig alte Käufe (Skins/Spuren, die es nicht mehr gibt). |
 | `js/days.js` | `SL.Days`: Tages-Schlüssel `YYYY-MM-DD`, `between`, `parse`, `timeUntilNext` |
 | `js/rng.js` | `SL.createRng(seed)` (mulberry32) |
 | `js/audio.js` | `SL.Audio` (Web-Audio-Engine + gemeinsame Töne, `add/play/tone/noise/ensure`), `SL.Haptics.vibrate` |
@@ -56,8 +60,8 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
 
 Startseite: `index.html` + `hub/hub.js|css`.
 Shop: `shop/index.html|shop.js|shop.css` – eigene Seite im Spielseiten-Gerüst (`game.css`, ein
-Screen, Kopfzeile sticky), alles untereinander: Dein Look, dann je Kategorie eine Abteilung (Kopf
-wie die Kapitel der Level-Auswahl). Erreichbar über den Shop-Knopf im Menü jedes Spiels
+Screen, Kopfzeile sticky mit beiden Währungen), alles untereinander: Karte zu den Slots, Dein
+Look, dann je Kategorie eine Abteilung (Kopf wie die Kapitel der Level-Auswahl). Erreichbar über den Shop-Knopf im Menü jedes Spiels
 (`../../shop/?from=<id>`, „Zurück“ führt dorthin; `links.js` hängt bei `file://` index.html vor `?` ein).
 **Stand (Wunsch des Nutzers, 21.10.2026):** Skins mit Aufgaben, Seltenheiten und Preisen wurden
 komplett gestrichen. Im Shop gibt es nur den Standard-Skin und die drei Spuren der Spiele (benannt
@@ -67,6 +71,34 @@ Shop legt sie wieder ab. Keine Aufgaben/Achievements – neue Shop-Inhalte nur n
 Drift zeichnet seinen eigenen Schweif weiter aus den Rutschern (`drawTrails` in renderer.js, zieht
 sich nach dem Stopp zurück) mit derselben Form (`SL.CosmeticsDraw.drawStreak`); Leap hängt die
 Figur-Position als letzten Spur-Punkt an.
+
+Slots: `slots/` – nur über den Shop erreichbar (`../slots/?from=<id>`, „Zurück“ führt in den Shop
+und reicht `from` weiter). Gleiches Seiten-Gerüst wie der Shop.
+- `machine.js`: `SL.Slots` ohne DOM (läuft in Node) – `SYMBOLS` (Punkt, Dreieck, Viereck, Sechseck,
+  Stern, Sieben = Jackpot: `count` auf dem 20er-Walzenband = Wahrscheinlichkeit, `pay3`),
+  `REELS` (feste Seeds, nie zwei gleiche nebeneinander), `BASE_STAKE` 40 × `STAKES` [1, 2, 5],
+  `evaluate` (mittlere Reihe: 3 gleiche = `pay3`, 2 gleiche von links = 1), `spin(stufe)`, `odds()`
+  (exakt über alle 8000 Kombinationen). **Quoten ändern → `npm run slots-odds`.**
+- `slots.js`: Ergebnis steht beim Drücken fest und wird sofort gebucht (`playSlots`), die Walzen
+  spielen es nur vor; die Kristall-Anzeige zählt erst nach dem Stillstand hoch. Walzen-Physik als
+  Funktion der Zeit (Ausholen, Anlaufen, volle Fahrt, Bremsen mit easeOutBack aufs Zielfeld – das
+  Bremsen startet, sobald das Ziel genau einen Bremsweg vor der Linie liegt; die Walzen bremsen
+  der Reihe nach). Trommel-Optik + Bewegungsunschärfe im Canvas, Spannung auf Walze 3, wenn 1+2
+  gleich sind. Hebel (ziehen oder antippen), Knopf, Leertaste; erneut drücken = schneller stoppen.
+  Konfetti auf eigener Canvas über der ganzen Seite (`#slot-fx`).
+- **Look (Wunsch des Nutzers):** schwarz-weiß wie die Spiele, keine bunten Farben. Weiche Formen
+  (runde Ecken) – nur die Sieben sticht heraus: klassische Automaten-7 (`sevenPath`: fetter Balken
+  mit rundem Ohr, geschwungener Schaft mit breitem Fuß), hell gefüllt mit dunkler Kontur und
+  3D-Versatz. Selbst gezeichnet statt Schriftdatei (kein Nachladen, keine Anfrage an Google). Der
+  Nutzer fand eine kantige Western-7 aus Polygonen zu „zusammengewürfelt“ – nur glatte Kurven. Gewinn = „Licht aus“: das Walzenfenster dunkelt ab (`VEIL`), nur die Gewinner
+  leuchten mit Lichthof und ploppen nacheinander rein; zwei gleiche: Symbol hell, drei gleiche:
+  Holo-Silber mit Lichtschein wie die 100-%-Sterne in Leap (`HOLO_BASE/HOLO_SHINE`) plus kurzer
+  Blitz; Lauflichter blinken silbern. Beim nächsten Dreh geht das Licht wieder an. Kein
+  `shadowBlur` (bremst auf iPhones) – Glühen über Radial-Verläufe; die Konfetti-Canvas wird nur
+  gezeichnet, solange Konfetti fliegt (max. 2× Auflösung). Das Gehäuse steht immer mittig, der Hebel
+  hängt außen rechts im Platz `--lever-w` der `.slot-stage` (Handy: 30 px).
+- Kristall-Icon (`.crystal-icon`, base.css) = um 45° gedrehtes Quadrat mit weichen Ecken.
+- `sounds.js`: `slotPull slotTick slotStop slotTease slotWin(tier) slotJackpot crystalTick`.
 
 ## Gemeinsames Muster jedes Spiels (`games/<id>/js/`)
 

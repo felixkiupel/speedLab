@@ -30,6 +30,39 @@
 }
 .shop-topbar.scrolled { box-shadow: 0 1px 0 var(--border-soft); }
 
+/* Weg zu den Slots: dunkle Karte ganz oben (wie die Endlos-Karte in Leap) */
+.shop-slots-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px 14px 14px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius);
+  text-decoration: none;
+  box-shadow: 0 6px 0 rgba(43, 36, 32, 0.18);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.shop-slots-card:hover { transform: translateY(-2px); box-shadow: 0 8px 0 rgba(43, 36, 32, 0.18); }
+.shop-slots-card:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(43, 36, 32, 0.18); }
+.shop-slots-card:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.shop-slots-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 1.6rem;
+}
+.shop-slots-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.shop-slots-text b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.shop-slots-text span { font-size: 0.82rem; line-height: 1.35; color: rgba(251, 247, 240, 0.65); }
+.shop-slots-go { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; font-weight: 700; }
+
 /* Aktueller Look: Live-Vorschau (Figur + Spur im Mini-Korridor) */
 .shop-hero {
   display: grid;

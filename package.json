@@ -8,6 +8,7 @@
     "seeds": "node games/maze/tools/level-seeds.js",
     "maze-preview": "node games/maze/tools/maze-preview.js",
     "drift-levels": "node games/drift/tools/level-gen.js",
-    "leap-check": "node games/leap/tools/course-check.js"
+    "leap-check": "node games/leap/tools/course-check.js",
+    "slots-odds": "node slots/tools/odds.js"
   }
 }

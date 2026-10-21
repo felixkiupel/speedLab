@@ -1,0 +1,273 @@
+/* Slots - der Automat (slots.js). Seiten-Gerüst (Screen, Kopfzeile, Einsatz-Auswahl .segmented,
+   Kopf der Gewinntabelle) aus shared/css/game.css; Farben, Buttons, Coin- und Kristall-Icon und
+   die Pill mit beiden Währungen aus shared/css/base.css - beide werden vorher geladen. */
+
+.slots {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-bottom: 32px;
+}
+
+/* Kristalle zählen hoch -> die Zahl ploppt am Ende (pop: game.css) */
+.wallet-pill > span.pop { animation: pop 0.3s cubic-bezier(0.2, 1.8, 0.4, 1); }
+
+/* ---------- Gehäuse ---------- */
+/* Mittig, links und rechts gleich viel Platz - rechts hängt darin der Hebel (--lever-w) */
+.slot-stage {
+  --lever-w: 46px;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--lever-w);
+}
+.slot-machine {
+  position: relative;
+  flex: 0 1 460px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 18px;
+  background: var(--bg);
+  border: 3px solid var(--ink);
+  border-radius: 28px;
+  box-shadow: 0 8px 0 rgba(43, 36, 32, 0.18);
+  /* Schnell nacheinander tippen (Drehen, Stopp) soll weder zoomen noch Text markieren */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Lauflichter auf einer dunklen Leiste: im Leerlauf wandert ein Licht gemächlich, beim Drehen
+   schnell, bei Gewinn blinkt alles in Holo-Silber (beim Jackpot noch schneller) - wie die Sterne
+   eines Leap-Levels mit 100 %. --i = Nummer der Lampe (im HTML). */
+.slot-lights {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: var(--ink);
+  border-radius: 999px;
+}
+.slot-lights i {
+  --step: 0.2s;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(251, 247, 240, 0.16);
+  animation: bulb calc(var(--step) * 14) linear infinite;
+  animation-delay: calc(var(--i) * var(--step));
+}
+.slot-machine.spinning .slot-lights i { --step: 0.05s; }
+@keyframes bulb {
+  0%, 12% { background: var(--bg); box-shadow: 0 0 7px rgba(251, 247, 240, 0.7); }
+  20%, 100% { background: rgba(251, 247, 240, 0.16); box-shadow: none; }
+}
+.slot-machine.win .slot-lights i,
+.slot-machine.jackpot .slot-lights i { animation: bulb-win 0.36s steps(1) infinite; }
+.slot-machine.win .slot-lights i:nth-child(even),
+.slot-machine.jackpot .slot-lights i:nth-child(even) { animation-delay: 0.18s; }
+.slot-machine.jackpot .slot-lights i { animation-duration: 0.2s; }
+.slot-machine.jackpot .slot-lights i:nth-child(even) { animation-delay: 0.1s; }
+@keyframes bulb-win {
+  0% { background: linear-gradient(135deg, #ffffff, #e4efff 40%, #cdd7e8 70%, #a6b3cb); box-shadow: 0 0 9px rgba(225, 236, 255, 0.9); }
+  50% { background: rgba(251, 247, 240, 0.16); box-shadow: none; }
+}
+
+/* ---------- Walzen ---------- */
+/* Höhe setzt slots.js passend zur Breite */
+#slot-reels {
+  display: block;
+  width: 100%;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+/* ---------- Anzeigen: Einsatz | Gewinn ---------- */
+.slot-displays { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.slot-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--bg);
+}
+.slot-display span {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(251, 247, 240, 0.6);
+}
+.slot-display b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 1.15rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.slot-display.flash { animation: display-flash 0.9s ease; }
+@keyframes display-flash {
+  0%, 100% { box-shadow: none; }
+  20% { box-shadow: 0 0 0 3px #cdd7e8, 0 0 22px rgba(205, 215, 232, 0.95); }
+}
+
+.slot-message {
+  min-height: 1.3em;
+  margin: -4px 0 -2px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+}
+.slot-machine.win .slot-message,
+.slot-machine.jackpot .slot-message { animation: pop 0.3s cubic-bezier(0.2, 1.8, 0.4, 1); }
+
+/* ---------- Bedienung ---------- */
+.slot-controls { display: flex; align-items: center; gap: 10px; }
+.slot-stakes { flex: 1; }
+.slot-stakes button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.slot-stakes button:disabled { cursor: not-allowed; }
+.slot-stakes button:disabled:not(.active) { opacity: 0.4; }
+
+/* Der große Knopf - sinkt beim Drücken ein. Während die Walzen laufen: "Stopp" (hell). */
+.slot-spin {
+  width: 100%;
+  min-height: 58px;
+  font-size: 1.2rem;
+  box-shadow: 0 6px 0 rgba(43, 36, 32, 0.28);
+}
+.slot-spin:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(43, 36, 32, 0.28); }
+.slot-spin.is-stop { background: var(--bg); color: var(--ink); }
+.slot-spin.is-stop:hover { background: var(--ink); color: var(--bg); }
+.slot-spin.shake { animation: shake 0.35s ease; }
+
+/* ---------- Hebel ---------- */
+/* Hängt außen rechts am Gehäuse (in dessen Platz rechts, --lever-w). Drehpunkt auf halber Höhe,
+   im Halter versteckt; Stange und Kugel bewegt slots.js (setLever). */
+.slot-lever {
+  --knob: 34px;
+  --pivot: 22px; /* Abstand des Drehpunkts vom Gehäuse */
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: var(--lever-w);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.slot-lever.grabbing { cursor: grabbing; }
+.slot-lever.disabled .lever-knob { background: var(--border-soft); }
+.lever-mount {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 50%;
+  width: calc(var(--pivot) + 10px);
+  height: 46px;
+  transform: translateY(-50%);
+  background: var(--ink);
+  border-radius: 0 14px 14px 0;
+}
+.lever-arm {
+  position: absolute;
+  z-index: 1;
+  left: var(--pivot);
+  bottom: 50%;
+  width: 8px;
+  border-radius: 4px;
+  background: var(--ink);
+  transform-origin: 50% 100%;
+}
+.lever-knob {
+  position: absolute;
+  z-index: 3;
+  left: var(--pivot);
+  top: 50%;
+  width: var(--knob);
+  height: var(--knob);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #6b5b51, var(--ink) 62%);
+  box-shadow: 0 3px 0 rgba(43, 36, 32, 0.25);
+}
+
+/* ---------- Gewinntabelle ---------- */
+.slot-paytable { display: flex; flex-direction: column; gap: 12px; }
+.paytable {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0 24px;
+}
+.pay-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.pay-symbols { display: flex; gap: 4px; }
+.pay-symbol { display: block; width: 24px; height: 24px; }
+.pay-any {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px dashed var(--border-soft);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.pay-label { flex: 1; font-size: 0.88rem; color: var(--text-dim); }
+.pay-amount { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.paytable-note { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--text-dim); }
+
+/* Konfetti über der ganzen Seite */
+.slot-fx {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .slots { gap: 26px; }
+  /* Etwas über den Seitenrand hinaus, damit das Gehäuse trotz Hebel-Platz breit genug bleibt */
+  .slot-stage { --lever-w: 30px; margin: 0 -8px; }
+  .slot-machine { gap: 12px; padding: 12px 12px 16px; border-radius: 24px; }
+  .slot-lever { --knob: 26px; --pivot: 13px; }
+  .lever-mount { height: 38px; }
+  .lever-arm { width: 6px; }
+  .slot-display { padding: 8px 10px; }
+  .slot-display b { font-size: 1.05rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-lights i,
+  .slot-machine.win .slot-lights i,
+  .slot-machine.jackpot .slot-lights i { animation: none; }
+  .slot-display.flash,
+  .slot-machine.win .slot-message,
+  .slot-machine.jackpot .slot-message { animation: none; }
+}

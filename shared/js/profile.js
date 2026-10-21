@@ -1,7 +1,8 @@
-// Spielübergreifendes Profil: Coins, die tägliche Serie und der Look aus dem Shop gehören keinem
-// einzelnen Spiel. Coins aus einem Spiel kann man in jedem anderen ausgeben, und die Serie hält,
-// solange man jeden Tag das Daily von irgendeinem Spiel schafft. Alles andere (Level, Bestwerte,
-// Einstellungen) speichert jedes Spiel selbst unter einem eigenen Schlüssel.
+// Spielübergreifendes Profil: Coins, Kristalle, die tägliche Serie und der Look aus dem Shop gehören
+// keinem einzelnen Spiel. Coins aus einem Spiel kann man in jedem anderen ausgeben, und die Serie
+// hält, solange man jeden Tag das Daily von irgendeinem Spiel schafft. Kristalle sind die zweite
+// Währung - es gibt sie nur am Automaten (slots/), bezahlt mit Coins. Alles andere (Level,
+// Bestwerte, Einstellungen) speichert jedes Spiel selbst unter einem eigenen Schlüssel.
 //
 // Alle Spielstände liegen unter "speedlab_*": Auf github.io teilen sich alle Projekte eines
 // Accounts denselben localStorage, das Präfix hält sie auseinander.
@@ -21,7 +22,7 @@ SL.Profile = (function () {
     // dailyLog: { [YYYY-MM-DD]: ["maze", ...] } - welche Spiele an dem Tag ihr Daily geschafft haben
     // cosmetics.equipped: was im Shop ausgerüstet ist ({ skin, trail }), siehe cosmetics.js
     return {
-      coins: 0, streak: 0, bestStreak: 0, lastDaily: null, dailyLog: {},
+      coins: 0, crystals: 0, streak: 0, bestStreak: 0, lastDaily: null, dailyLog: {},
       cosmetics: { equipped: {} },
     };
   }
@@ -67,6 +68,24 @@ SL.Profile = (function () {
   function spend(amount) {
     if (read().coins < amount) return false;
     update((p) => { p.coins -= amount; });
+    return true;
+  }
+
+  // ---------- Kristalle ----------
+
+  function crystals() {
+    return read().crystals;
+  }
+
+  // Ein Dreh am Automaten in einem Schritt: Einsatz in Coins abziehen, Gewinn in Kristallen
+  // gutschreiben. Gebucht wird beim Drehen, nicht erst wenn die Walzen stehen - wer mittendrin die
+  // Seite schließt, verliert nichts. false = zu wenig Coins
+  function playSlots(stake, win) {
+    if (read().coins < stake) return false;
+    update((p) => {
+      p.coins -= stake;
+      p.crystals += win;
+    });
     return true;
   }
 
@@ -219,7 +238,7 @@ SL.Profile = (function () {
   migrateShop();
 
   return {
-    coins, addCoins, spend, levelPay, dailyBonus,
+    coins, addCoins, spend, levelPay, dailyBonus, crystals, playSlots,
     equippedCosmetic, equipCosmetic,
     streak, bestStreak, dailiesOn, completeDaily, onChange,
   };

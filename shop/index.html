@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>speedLab Shop</title>
-<meta name="description" content="speedLab Shop – Skin und Spur für deine Figur.">
+<meta name="description" content="speedLab Shop – Skin und Spur für deine Figur, Kristalle am Automaten.">
 <meta name="theme-color" content="#fbf7f0">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="../shared/css/base.css?v=873920ee">
+<link rel="stylesheet" href="../shared/css/base.css?v=d162b5fa">
 <link rel="stylesheet" href="../shared/css/game.css?v=05657b8b">
-<link rel="stylesheet" href="shop.css?v=27d91945">
+<link rel="stylesheet" href="shop.css?v=2d66471c">
 </head>
 <body>
 <div id="app">
@@ -22,9 +22,13 @@
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Alle Spiele
       </a>
       <h2>Shop</h2>
-      <div class="coin-pill"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></div>
+      <div class="coin-pill wallet-pill">
+        <span aria-label="Coins"><span class="coin-icon" aria-hidden="true"></span><span id="shop-coins">0</span></span>
+        <span aria-label="Kristalle"><span class="crystal-icon" aria-hidden="true"></span><span id="shop-crystals">0</span></span>
+      </div>
     </header>
-    <!-- Inhalt setzt shop.js: Dein Look, darunter je Kategorie alle Items -->
+    <!-- Inhalt setzt shop.js: der Weg zu den Slots (Kristalle), Dein Look, darunter je Kategorie
+         alle Items -->
     <div id="shop" class="shop"></div>
   </section>
 
@@ -32,10 +36,10 @@
 
 <script src="../shared/js/links.js?v=86a0b5d1"></script>
 <script src="../shared/js/days.js?v=b36a7d57"></script>
-<script src="../shared/js/profile.js?v=76c45e87"></script>
+<script src="../shared/js/profile.js?v=288670ef"></script>
 <script src="../shared/js/games.js?v=e0198e27"></script>
 <script src="../shared/js/cosmetics.js?v=f0876cc3"></script>
 <script src="../shared/js/cosmetics-draw.js?v=57457b93"></script>
-<script src="shop.js?v=fa90f44e"></script>
+<script src="shop.js?v=23cbf39b"></script>
 </body>
 </html>

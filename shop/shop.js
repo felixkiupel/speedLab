@@ -1,8 +1,11 @@
 // Shop-Seite: Skins und Spuren für die Figur - spielübergreifend und alles frei. Alles steht
-// untereinander auf einer Seite: oben der aktuelle Look, darunter je Kategorie (SL.COSMETIC_TYPES)
-// eine Abteilung mit allen Items. Katalog: shared/js/cosmetics.js, Vorschauen:
-// shared/js/cosmetics-draw.js. Aufgerufen wird der Shop aus den Spiel-Menüs mit ?from=<spiel>.
+// untereinander auf einer Seite: oben der Weg zu den Slots (dort gibt es Kristalle, die zweite
+// Währung), dann der aktuelle Look, darunter je Kategorie (SL.COSMETIC_TYPES) eine Abteilung mit
+// allen Items. Katalog: shared/js/cosmetics.js, Vorschauen: shared/js/cosmetics-draw.js.
+// Aufgerufen wird der Shop aus den Spiel-Menüs mit ?from=<spiel>.
 (function () {
+  const CRYSTAL_ICON = `<span class="crystal-icon" aria-hidden="true"></span>`;
+  const ARROW_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const CHECK_ICON = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   // Aus welchem Spiel man kommt (?from=maze) - dorthin führt "Zurück"
@@ -62,8 +65,20 @@
     const scroller = document.querySelector(".shop-screen");
     const scrollTop = scroller.scrollTop;
 
+    const crystals = SL.Profile.crystals();
     document.getElementById("shop-coins").textContent = SL.Profile.coins();
+    document.getElementById("shop-crystals").textContent = crystals;
+    // Slots bekommen ?from= mit, damit "Zurück" über den Shop ins richtige Spiel führt
+    const slotsHref = "../slots/" + (fromGame ? `?from=${fromGame.id}` : "");
     document.getElementById("shop").innerHTML = `
+      <a class="shop-slots-card" href="${slotsHref}">
+        <span class="shop-slots-icon">${CRYSTAL_ICON}</span>
+        <span class="shop-slots-text">
+          <b>${crystals} ${crystals === 1 ? "Kristall" : "Kristalle"}</b>
+          <span>Am Automaten tauschst du Coins gegen Kristalle – damit gibt's bald Skins.</span>
+        </span>
+        <span class="shop-slots-go">Slots${ARROW_ICON}</span>
+      </a>
       <div class="shop-hero">
         <canvas class="shop-hero-canvas" data-preview="hero" aria-hidden="true"></canvas>
         <div class="shop-hero-info">

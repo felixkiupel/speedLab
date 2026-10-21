@@ -53,6 +53,21 @@ h1, h2 { line-height: 1.15; }
   background: currentColor;
 }
 
+/* Kristall - die zweite Währung (gibt es nur am Automaten, slots/): ein um 45° gedrehtes Quadrat
+   mit weichen Ecken. Der Rand gleicht aus, dass die gedrehte Raute breiter ist als ihr Kasten. */
+.crystal-icon {
+  display: block;
+  position: relative;
+  top: 0.04em;
+  flex-shrink: 0;
+  width: 0.48em;
+  height: 0.48em;
+  margin: 0.1em;
+  border-radius: 0.08em;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
 /* ---------- FIGUR ---------- */
 /* Das Gesicht unserer Figur - prozentual aufgebaut, damit es in jeder Größe passt */
 .face {
@@ -251,6 +266,11 @@ h1, h2 { line-height: 1.15; }
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+
+/* Beide Währungen in einer Pill (Shop, Slots): Coins | Kristalle */
+.wallet-pill { gap: 0; padding: 0 14px; }
+.wallet-pill > span { display: inline-flex; align-items: center; gap: 6px; }
+.wallet-pill > span + span { margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--border-soft); }
 
 /* ---------- FORTSCHRITT ---------- */
 .progress {
