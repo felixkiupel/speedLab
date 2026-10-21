@@ -16,22 +16,32 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
 - Coins, Kristalle + Daily-Serie global (`SL.Profile`, `speedlab_profile_v1`), alles andere pro
   Spiel (`speedlab_<id>_v1`, Slots: `speedlab_slots_v1` nur Einsatz + Ton). Alle Pfade relativ
   (GitHub Pages).
-- **Coin-Regel (Wunsch des Nutzers, gilt für alle Spiele):** Level-Belohnung =
-  `SL.Profile.levelPay(SL.levelUnlockCost(id + 1), sterne)` + eingesammelte Coins 1:1.
-  3 Sterne = Preis des nächsten Levels + 2 (reicht direkt), 2 Sterne = 55 % (zwei Läufe nötig),
-  1 Stern = 35 % (drei Läufe). Keine Einmal-Boni. Tagesbonus klein: `dailyBonus` = 10/Stern +
-  Serie (max. 10). Freischalten soll eine Herausforderung bleiben – keine neuen Coin-Quellen
-  ohne Rücksprache.
+- **Coin-Regel (Wunsch des Nutzers, gilt für alle Spiele, Rework 21.10.2026):** Level-Belohnung =
+  `SL.Profile.levelPay(SL.levelUnlockCost(id + 1), sterne, besteSterneBisher)` + eingesammelte
+  Coins 1:1. **Jeder Stern zahlt nur einmal** (gegen Farmen): alle 3 Sterne zusammen = Preis des
+  nächsten Levels + 2, jeder Stern ein Drittel davon; bezahlt wird nur, was über die besten Sterne
+  bisher hinausgeht. Level mit 3 Sternen bringen nur noch die eingesammelten Coins. Das Ergebnis
+  zeigt die Posten (`SL.Profile.levelPayLabel`, z.B. „1 neuer Stern“, „3 Sterne schon geholt +0“) –
+  in allen drei Spielen gleich (`computeReward` → `{ parts, total }`). Tagesbonus klein:
+  `dailyBonus` = 10/Stern + Serie (max. 10). Freischalten soll eine Herausforderung bleiben – keine
+  neuen Coin-Quellen ohne Rücksprache. Alle Spiele kosten fürs Freischalten (Drift/Leap:
+  60 + 15/Level, Maze: 40 + 35/Level).
+- **Kein Zoomen** (Wunsch des Nutzers): viewport-Meta jeder Seite mit `maximum-scale=1,
+  user-scalable=no`, `html { touch-action: manipulation }` (base.css) und `shared/js/no-zoom.js`
+  (blockt Zwei-Finger-Gesten auf dem iPhone) – neue Seiten brauchen alle drei.
+- Schwarze Meldungen (Effekt-Texte, Start-Hinweise, Toast) haben eine helle 2-px-Umrandung, damit
+  sie auch vor dunklem Grund lesbar bleiben.
 - **Kristalle (zweite Währung, Wunsch des Nutzers 21.10.2026):** gibt es nur am Automaten
   (`slots/`), bezahlt mit Coins, zu einem bewusst „bodenlosen“ Kurs (~112 Coins pro Kristall,
   `npm run slots-odds`). Die Slots zahlen nie Coins aus. Später sollen Skins Kristalle kosten.
 - Strecken/Karten ändern → `SL.LEVEL_SET_VERSION` in `levels.js` erhöhen (alte Bestwerte verfallen).
 - Kein Test-Framework. Prüfen per Node-Tool (siehe unten) und im Browser.
-- **Version** steht im Footer der Startseite (`index.html`, `.foot-version`): bei jeder
-  Veröffentlichung erhöhen – neues Feature 1.3 → 1.4, Fix 1.3 → 1.3.1. Bisher: Maze 1.0, Drift 1.1,
-  Leap 1.2, Kristalle + Slots 1.3. Daran sieht der Nutzer am Handy, ob er eine Seite aus dem Cache hat.
+- **Version** steht im Footer der Startseite (`index.html`, `.foot-version`) und wird **nicht von
+  Hand** gesetzt: `npm run stamp` schreibt `v0.<Nummer des Commits>` (Testphase = 0.x, Wunsch des
+  Nutzers 21.10.2026; offene Änderungen = Nummer des kommenden Commits). Daran sieht der Nutzer
+  am Handy, ob er eine Seite aus dem Cache hat.
 - **Vor jedem Commit `npm run stamp`** (`tools/stamp.js`): hängt Inhalts-Hashes (`?v=…`) an alle
-  eingebundenen JS/CSS-Dateien der HTML-Seiten. Ohne das mischen Handys nach einem Deploy alte
+  eingebundenen JS/CSS-Dateien der HTML-Seiten und setzt die Version (s.o.). Ohne das mischen Handys nach einem Deploy alte
   (GitHub-Pages-Cache, 10 Min.) und neue Skripte – wahrscheinlichste Ursache, warum der
   Endlosmodus am 20.10.2026 auf dem Handy nicht lief. Meldet auch Pfade mit falscher
   Groß-/Kleinschreibung.
@@ -58,6 +68,7 @@ und "Neues Spiel hinzufügen" stehen in der README – hier nur, was man zum Arb
 | `js/settings.js` | Einstellungs-Overlay, liest Zeilen aus dem HTML (`data-setting`) |
 | `js/games.js` | `SL.GAMES` – Kacheln der Startseite |
 | `js/links.js` | Ordner-Links auch bei `file://` |
+| `js/no-zoom.js` | Kein Zwei-Finger-Zoom auf dem iPhone (Rest: viewport-Meta + base.css), auf jeder Seite als erstes Skript |
 | `js/cosmetics.js` | Katalog: `SKINS` (nur „Standard“) und `TRAILS` (je Spiel eine: Maze/Drift/Leap, `game` + `style`) → `SL.COSMETIC_TYPES`, `SL.COSMETICS`. `SL.Cosmetics`: `get equipped(type) trailFor(gameId) equip(id) unequip(type)`. Alles frei, keine Preise. |
 | `js/cosmetics-draw.js` | `SL.TrailStyles[style].draw(ctx, points, r)` (`dots` Maze, `streak` Drift, `growing` Leap; r = Figur-Radius, damit jede Spur in jedes Spiel passt). `SL.CosmeticsDraw`: `drawFigure(ctx,x,y,r,look,body?) drawTrail(ctx,points,r,trail) drawStreak drawSkinPreview drawScenePreview` (IIFE). |
 
@@ -87,7 +98,9 @@ und reicht `from` weiter). Gleiches Seiten-Gerüst wie der Shop.
   Funktion der Zeit (Ausholen, Anlaufen, volle Fahrt, Bremsen mit easeOutBack aufs Zielfeld – das
   Bremsen startet, sobald das Ziel genau einen Bremsweg vor der Linie liegt; die Walzen bremsen
   der Reihe nach). Trommel-Optik + Bewegungsunschärfe im Canvas, Spannung auf Walze 3, wenn 1+2
-  gleich sind. Hebel (ziehen oder antippen), Knopf, Leertaste; erneut drücken = schneller stoppen.
+  gleich sind (die ganze Walze blinkt gefüllt, kein Rahmen). Hebel (ziehen oder antippen), Knopf,
+  Leertaste; erneut drücken = schneller stoppen. Knopf: „Drehen“ immer schwarz (kein Hover-Umfärben,
+  verliert nach dem Klick den Fokus), „Stopp“ ausgegraut.
   Konfetti auf eigener Canvas über der ganzen Seite (`#slot-fx`).
 - **Look (Wunsch des Nutzers):** schwarz-weiß wie die Spiele, keine bunten Farben. Weiche Formen
   (runde Ecken) – nur die Sieben sticht heraus: klassische Automaten-7 (`sevenPath`: fetter Balken

@@ -49,12 +49,14 @@ SL.Economy = {
     return 1;
   },
 
-  // Belohnung: die Sterne zahlen sich am Preis des nächsten Levels aus (3 Sterne = reicht direkt,
-  // siehe SL.Profile.levelPay), dazu jeder eingesammelte Coin 1:1. Die Umweg-Coins kosten Züge und
-  // damit Zeit - ob sich das lohnt, hängt an den Sternen. Liefert die Einzelposten, damit das
-  // Ergebnis zeigen kann, wofür es Coins gab.
-  computeReward({ levelId, stars, coinsCollected }) {
-    const parts = [{ label: stars === 1 ? "1 Stern" : `${stars} Sterne`, coins: SL.Profile.levelPay(SL.levelUnlockCost(levelId + 1), stars) }];
+  // Belohnung: jeder Stern zahlt sich einmal am Preis des nächsten Levels aus (alle 3 = reicht
+  // direkt, siehe SL.Profile.levelPay) - prevStars = beste Sterne bisher, die sind schon bezahlt.
+  // Dazu jeder eingesammelte Coin 1:1. Die Umweg-Coins kosten Züge und damit Zeit - ob sich das
+  // lohnt, hängt an den Sternen. Liefert die Einzelposten, damit das Ergebnis zeigen kann, wofür
+  // es Coins gab.
+  computeReward({ levelId, stars, prevStars, coinsCollected }) {
+    const pay = SL.Profile.levelPay(SL.levelUnlockCost(levelId + 1), stars, prevStars);
+    const parts = [{ label: SL.Profile.levelPayLabel(stars, prevStars), coins: pay }];
     if (coinsCollected) parts.push({ label: `${coinsCollected} × Coin`, coins: coinsCollected });
     return { parts, total: parts.reduce((sum, p) => sum + p.coins, 0) };
   },

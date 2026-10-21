@@ -31,6 +31,7 @@ shared/               Gemeinsam für alle Seiten
   js/days.js          Tages-Schlüssel (Tageswechsel um Mitternacht Ortszeit)
   js/games.js         Liste aller Spiele für die Startseite
   js/links.js         Ordner-Links funktionieren auch beim Öffnen als Datei
+  js/no-zoom.js       kein Reinzoomen (Doppeltipp, zwei Finger) auf jeder Seite
   js/rng.js           Zufall mit Seed (gleicher Seed = gleiches Level)
   js/audio.js         Ton-Engine, gemeinsame Töne (Klick, Coin, Sterne, Ziel ...) und Vibration
   js/effects.js       Partikel, schwebender Text, Wackeln
@@ -47,7 +48,7 @@ games/leap/           Das Timing-Sprungspiel
   index.html, css/, js/
   preview.svg         Kachelbild auf der Startseite
   tools/course-check.js  Prüft alle Strecken per Simulation (npm run leap-check)
-tools/stamp.js        Versions-Hashes an alle Skripte/Styles in den HTML-Seiten (npm run stamp)
+tools/stamp.js        Versions-Hashes an alle Skripte/Styles + Versionsnummer im Footer (npm run stamp)
 ```
 
 ## Speicherstand
@@ -75,7 +76,7 @@ Am einfachsten: `games/leap/` kopieren (das jüngste Spiel) und den Spielteil au
 1. Ordner `games/<id>/` mit eigener `index.html` anlegen.
 2. Dort `../../shared/css/base.css` und `../../shared/css/game.css` einbinden, danach das eigene
    `css/style.css` – darin steht nur, was es nur in diesem Spiel gibt (Spielfeld, Hinweise ...).
-3. Skripte aus `../../shared/js/`: `links.js`, `days.js`, `profile.js`, dazu nach Bedarf `rng.js`,
+3. Skripte aus `../../shared/js/`: `no-zoom.js`, `links.js`, `days.js`, `profile.js`, dazu nach Bedarf `rng.js`,
    `audio.js`, `effects.js`, `settings.js`. Die HTML-Bausteine (Menü, Ergebnis, Einstellungen ...)
    übernimmt man aus einem bestehenden Spiel – dann sehen sie automatisch gleich aus.
 4. Eigene Töne in `js/sounds.js` mit `SL.Audio.add({ name() { ... } })` anmelden.
@@ -86,9 +87,12 @@ Am einfachsten: `games/leap/` kopieren (das jüngste Spiel) und den Spielteil au
    der schwarzen Knöpfe kommen aus `game.css`, Anzahl, Größe und Position legt das Spiel fest
    (Maze: Raute aus vier, Leap: einer in der Mitte).
 7. Coins über `SL.Profile.coins()`, `SL.Profile.addCoins(n)` und `SL.Profile.spend(n)`. Belohnung
-   für ein Level wie in allen Spielen: `SL.Profile.levelPay(preisDesNächstenLevels, sterne)` plus
-   jeder eingesammelte Coin 1:1 (3 Sterne reichen direkt fürs nächste Level, 2 Sterne nach zwei
-   Läufen, 1 Stern nach drei).
+   für ein Level wie in allen Spielen: `SL.Profile.levelPay(preisDesNächstenLevels, sterne,
+   besteSterneBisher)` plus jeder eingesammelte Coin 1:1. Jeder Stern zahlt nur einmal (alle 3
+   zusammen reichen fürs nächste Level), ein Level mit 3 Sternen bringt nur noch die eingesammelten
+   Coins. Posten fürs Ergebnis: `SL.Profile.levelPayLabel(sterne, besteSterneBisher)`.
+   Jede Seite bindet außerdem `shared/js/no-zoom.js` ein und hat `maximum-scale=1,
+   user-scalable=no` im viewport-Meta (kein Zoomen).
 8. Shop: `cosmetics.js` und `cosmetics-draw.js` einbinden. Die Figur mit
    `SL.CosmeticsDraw.drawFigure(...)` zeichnen, die Spur mit
    `SL.CosmeticsDraw.drawTrail(ctx, punkte, radius, SL.Cosmetics.trailFor("<id>"))`. Die eigene Spur

@@ -106,15 +106,27 @@ SL.Profile = (function () {
 
   // ---------- Belohnung (für alle Spiele gleich) ----------
 
-  // Coins für einen Level-Lauf, gemessen am Preis des nächsten Levels im selben Spiel: 3 Sterne
-  // reichen direkt zum Freischalten (plus ein paar Coins), mit 2 Sternen braucht man zwei Läufe, mit
-  // 1 Stern drei. Jeder Lauf zahlt gleich, auch Wiederholungen. Eingesammelte Coins kommen extra
-  // dazu, jeder zählt genau 1.
-  const STAR_SHARE = { 2: 0.55, 1: 0.35 };
+  // Coins für die Sterne eines Level-Laufs, gemessen am Preis des nächsten Levels im selben Spiel.
+  // Jeder Stern zahlt nur ein einziges Mal: alle drei zusammen bringen den Preis des nächsten
+  // Levels plus ein paar Coins, jeder Stern ein Drittel davon. Bezahlt wird nur, was über die
+  // besten Sterne bisher (prevStars) hinausgeht - wer ein Level wiederholt, ohne besser zu werden,
+  // und jedes Level mit 3 Sternen bringt nur noch die eingesammelten Coins (die kommen immer extra
+  // dazu, jeder zählt genau 1). So lassen sich Coins nicht farmen.
   const THREE_STAR_EXTRA = 2;
-  function levelPay(nextLevelCost, stars) {
-    if (stars >= 3) return nextLevelCost + THREE_STAR_EXTRA;
-    return Math.ceil(nextLevelCost * (STAR_SHARE[stars] || 0));
+  function starPay(nextLevelCost, stars) {
+    const n = Math.max(0, Math.min(3, stars || 0));
+    return Math.ceil(((nextLevelCost + THREE_STAR_EXTRA) * n) / 3);
+  }
+  function levelPay(nextLevelCost, stars, prevStars = 0) {
+    return Math.max(0, starPay(nextLevelCost, stars) - starPay(nextLevelCost, prevStars));
+  }
+
+  // Posten fürs Ergebnis: wofür es (keine) Sterne-Coins gab
+  function levelPayLabel(stars, prevStars = 0) {
+    if (stars <= prevStars) return prevStars >= 3 ? "3 Sterne schon geholt" : "Keine neuen Sterne";
+    const n = stars - prevStars;
+    if (!prevStars) return n === 1 ? "1 Stern" : `${n} Sterne`;
+    return n === 1 ? "1 neuer Stern" : `${n} neue Sterne`;
   }
 
   // Tagesbonus fürs erste geschaffte Daily eines Spiels am Tag: 10 pro Stern + 1 pro Serien-Tag
@@ -238,7 +250,7 @@ SL.Profile = (function () {
   migrateShop();
 
   return {
-    coins, addCoins, spend, levelPay, dailyBonus, crystals, playSlots,
+    coins, addCoins, spend, levelPay, levelPayLabel, dailyBonus, crystals, playSlots,
     equippedCosmetic, equipCosmetic,
     streak, bestStreak, dailiesOn, completeDaily, onChange,
   };

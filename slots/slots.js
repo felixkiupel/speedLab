@@ -381,6 +381,7 @@
     fxDirty = true;
     const newDpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
+    if (!w) return; // Seite (noch) unsichtbar - das nächste resize baut alles
     if (view && view.w === w && dpr === newDpr) return;
     const dprChanged = dpr !== newDpr;
     dpr = newDpr;
@@ -543,6 +544,7 @@
     const s = Math.min(reelW * 0.27, R * Math.sin(ANGLE) * 0.46);
     const result = round && round.revealed && round.result.kind ? round.result : null;
     const since = result ? now - round.winAt : Infinity;
+    const tease = teasing(now);
 
     reels.forEach((r, i) => {
       const x0 = view.reelX(i);
@@ -552,6 +554,12 @@
       ctx.beginPath();
       ctx.rect(x0, 0, reelW, h);
       ctx.clip();
+      // Spannung: die letzte Walze blinkt - ihre ganze Fläche dunkelt im Takt ab, hinter den Symbolen
+      if (tease && i === reels.length - 1) {
+        const t = 0.5 + 0.5 * Math.sin(now / 70);
+        ctx.fillStyle = `rgba(43, 36, 32, ${(0.05 + 0.25 * t).toFixed(3)})`;
+        ctx.fillRect(x0, 0, reelW, h);
+      }
       // Bewegungsunschärfe: in voller Fahrt verwischen die Symbole in Laufrichtung
       const speed = Math.abs(r.v);
       const ghosts = Math.min(3, Math.floor(speed / 8));
@@ -622,14 +630,6 @@
     ctx.lineTo(w - a * 1.1, cy);
     ctx.lineTo(w, cy + a);
     ctx.fill();
-
-    // Spannung: Rahmen um die letzte Walze pulsiert
-    if (teasing(now)) {
-      const t = 0.5 + 0.5 * Math.sin(now / 70);
-      ctx.strokeStyle = `rgba(43, 36, 32, ${0.35 + 0.65 * t})`;
-      ctx.lineWidth = 3 + 2 * t;
-      ctx.strokeRect(view.reelX(2) + 3, 3, reelW - 6, h - 6);
-    }
   }
 
   // Ein Feld auf der Trommel: d = Abstand zur Gewinnlinie in Feldern

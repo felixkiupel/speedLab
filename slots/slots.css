@@ -144,16 +144,26 @@
 .slot-stakes button:disabled { cursor: not-allowed; }
 .slot-stakes button:disabled:not(.active) { opacity: 0.4; }
 
-/* Der große Knopf - sinkt beim Drücken ein. Während die Walzen laufen: "Stopp" (hell). */
+/* Der große Knopf - sinkt beim Drücken ein. "Drehen" ist immer schwarz: kein Umfärben beim
+   Drüberfahren (am Handy bliebe das nach dem Tippen hängen). Während die Walzen laufen steht dort
+   ein ausgegrautes "Stopp" - drücken kann man es trotzdem. */
 .slot-spin {
   width: 100%;
   min-height: 58px;
   font-size: 1.2rem;
   box-shadow: 0 6px 0 rgba(43, 36, 32, 0.28);
 }
+.slot-spin:hover,
+.slot-spin:disabled:hover { background: var(--ink); color: var(--bg); }
 .slot-spin:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(43, 36, 32, 0.28); }
-.slot-spin.is-stop { background: var(--bg); color: var(--ink); }
-.slot-spin.is-stop:hover { background: var(--ink); color: var(--bg); }
+.slot-spin.is-stop,
+.slot-spin.is-stop:hover {
+  background: var(--border-soft);
+  border-color: var(--border-soft);
+  color: var(--text-dim);
+  box-shadow: 0 6px 0 rgba(43, 36, 32, 0.12);
+}
+.slot-spin.is-stop:active { box-shadow: 0 2px 0 rgba(43, 36, 32, 0.12); }
 .slot-spin.shake { animation: shake 0.35s ease; }
 
 /* ---------- Hebel ---------- */

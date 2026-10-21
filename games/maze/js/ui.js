@@ -395,19 +395,21 @@ SL.UI = (function () {
 
   function recordLevelRun(result) {
     const prev = getResult(currentLevelId);
-    const coinsEarned = SL.Economy.computeReward({
+    const reward = SL.Economy.computeReward({
       levelId: currentLevelId,
       stars: result.stars,
+      prevStars: prev ? prev.stars : 0,
       coinsCollected: result.coinsCollected,
     });
-    SL.Economy.recordLevelResult(state, currentLevelId, result.timeMs, result.stars, coinsEarned);
-    return { coinsEarned, isNewBest: !prev || result.timeMs < prev.bestTimeMs };
+    SL.Economy.recordLevelResult(state, currentLevelId, result.timeMs, result.stars, reward.total);
+    return { reward, isNewBest: !prev || result.timeMs < prev.bestTimeMs };
   }
 
   // Daily: Coins gibt es nur beim ersten Abschluss des Tages (als Bonus, der mit der Serie wächst)
   function recordDailyRun(result) {
     const daily = SL.Daily.recordResult(state, currentConfig.dailyKey, result.timeMs, result.stars);
-    return { coinsEarned: daily.coins, isNewBest: daily.isNewBest, daily };
+    const parts = daily.coins ? [{ label: "Tagesbonus", coins: daily.coins }] : [];
+    return { reward: { parts, total: daily.coins }, isNewBest: daily.isNewBest, daily };
   }
 
   const RESULT_TITLES = { 3: "Perfekt!", 2: "Stark!", 1: "Geschafft!" };
@@ -423,6 +425,8 @@ SL.UI = (function () {
     document.getElementById("results-crashes").textContent = result.crashCount;
     document.getElementById("results-coins").innerHTML = `+0${COIN_ICON}`; // zählt animiert hoch
     document.getElementById("results-stars").innerHTML = starsHtml(0); // ploppen animiert rein
+    document.getElementById("results-breakdown").innerHTML = outcome.reward.parts
+      .map((part) => `<li class="pending"><span>${part.label}</span><span>+${part.coins}</span></li>`).join("");
     // Auf 10 ms aufrunden: 3 Sterne gibt es erst echt UNTER der Grenze
     const missingMs = Math.floor((result.timeMs - t3) / 10) * 10 + 10;
     document.getElementById("results-note").innerHTML = result.stars === 3
@@ -435,7 +439,7 @@ SL.UI = (function () {
     if (isDaily) {
       const { streak, firstClear } = outcome.daily;
       info = `${INLINE_FLAME} Serie: <b>${streak} ${streak === 1 ? "Tag" : "Tage"}</b>`
-        + (firstClear ? ` · Tagesbonus +${outcome.coinsEarned}${INLINE_COIN}` : "")
+        + (firstClear ? ` · Tagesbonus +${outcome.reward.total}${INLINE_COIN}` : "")
         + `<br>Nächstes Daily in ${SL.Days.timeUntilNext()}`;
     }
     infoEl.innerHTML = info;
@@ -457,7 +461,8 @@ SL.UI = (function () {
     }
   }
 
-  // Sterne ploppen nacheinander rein (mit steigendem Ton), Coins zählen hoch, danach das Badge
+  // Sterne ploppen nacheinander rein (mit steigendem Ton), Coins zählen hoch und die Posten
+  // erscheinen, danach das Badge
   function playResultsAnimation(result, outcome) {
     clearResultTimers();
     const stars = document.querySelectorAll("#results-stars .star");
@@ -478,8 +483,13 @@ SL.UI = (function () {
       }, afterStars));
     }
 
+    document.querySelectorAll("#results-breakdown li").forEach((li, i) => resultTimers.push(setTimeout(() => {
+      li.classList.remove("pending");
+      if (effects.enabled) li.classList.add("pop");
+    }, 150 + i * (effects.enabled ? 90 : 0))));
+
     const coinsEl = document.getElementById("results-coins");
-    const total = outcome.coinsEarned;
+    const total = outcome.reward.total;
     const startAt = performance.now() + 150;
     const token = resultAnimToken;
     const countUp = (now) => {

@@ -16,6 +16,9 @@
 
 * { box-sizing: border-box; }
 
+/* Kein Doppeltipp-Zoom auf allen Seiten (mehr dazu in shared/js/no-zoom.js) */
+html { touch-action: manipulation; }
+
 body {
   margin: 0;
   background: var(--bg);

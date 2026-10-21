@@ -118,9 +118,13 @@ SL.Effects.prototype.render = function render(ctx, toScreen, bounds) {
       x = Math.max(w / 2 + 4, Math.min(bounds.w - w / 2 - 4, x));
       y = Math.max(16, Math.min(bounds.h - 16, y));
     }
+    // Dunkle Pille mit heller Umrandung - so bleibt sie auch vor dunklem Grund (Wände, Land) lesbar
     ctx.fillStyle = "#2b2420";
+    ctx.strokeStyle = "#fbf7f0";
+    ctx.lineWidth = 4; // die innere Hälfte deckt die Füllung zu -> 2 px Rand wie im CSS
     ctx.beginPath();
     ctx.roundRect ? ctx.roundRect(x - w / 2, y - 12, w, 24, 12) : ctx.rect(x - w / 2, y - 12, w, 24);
+    ctx.stroke();
     ctx.fill();
     ctx.fillStyle = "#fbf7f0";
     ctx.fillText(t.label, x, y + 1);

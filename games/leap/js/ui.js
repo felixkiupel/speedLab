@@ -541,6 +541,7 @@ SL.UI = (function () {
     const reward = SL.Economy.computeReward({
       levelId: currentLevelId,
       stars: result.stars,
+      prevStars: prev ? prev.stars : 0,
       coinsCollected: result.coinsCollected,
     });
     const endlessBefore = state.endless.unlocked;

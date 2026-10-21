@@ -7,11 +7,14 @@
 // Prüft nebenbei, dass jede eingebundene Datei genau so geschrieben existiert: Windows ist bei
 // Groß-/Kleinschreibung egal, GitHub Pages nicht ("Ui.js" statt "ui.js" ginge lokal, online nicht).
 //
-//   npm run stamp              Hashes in allen HTML-Seiten aktualisieren - vor jedem Commit
-//   npm run stamp -- --check   nur prüfen; Exit-Code 1, wenn ein Hash veraltet ist
+// Setzt außerdem die Versionsnummer im Footer der Startseite (siehe versionNow).
+//
+//   npm run stamp              Hashes + Version aktualisieren - vor jedem Commit
+//   npm run stamp -- --check   nur prüfen; Exit-Code 1, wenn ein Hash oder die Version veraltet ist
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { execSync } = require("child_process");
 
 const root = path.join(__dirname, "..");
 const check = process.argv.includes("--check");
@@ -62,9 +65,41 @@ for (const html of htmlFiles(root)) {
   if (!check) fs.writeFileSync(html, after);
 }
 
+// Version = 0.<Nummer des Commits> - alles ist noch Testphase, darum 0.x. Die Nummer zählt die
+// Commits, steigt also bei jeder Veröffentlichung von selbst; am Handy sieht man so, ob man eine
+// alte Seite aus dem Cache hat. Sind Änderungen offen (stamp läuft vor dem Commit), ist es die
+// Nummer des kommenden Commits - danach, im sauberen Stand, bleibt sie gleich. Dateien, die git noch
+// nicht kennt, zählen nicht (sonst stiege sie wegen einer liegengebliebenen preview.svg).
+function versionNow() {
+  try {
+    const git = (args) => execSync(`git ${args}`, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const commits = Number(git("rev-list --count HEAD"));
+    const pending = git("status --porcelain --untracked-files=no") !== "";
+    return `0.${commits + (pending ? 1 : 0)}`;
+  } catch (e) {
+    return null;
+  }
+}
+
+const HOME = path.join(root, "index.html");
+const VERSION = /(<span class="foot-version">v)[^<]*(<\/span>)/;
+const version = versionNow();
+if (!version) {
+  console.log("! Version nicht gesetzt - git nicht gefunden");
+} else {
+  const before = fs.readFileSync(HOME, "utf8");
+  if (!VERSION.test(before)) errors.push(`${show(HOME)}: kein .foot-version gefunden`);
+  const after = before.replace(VERSION, `$1${version}$2`);
+  if (after !== before) {
+    if (!changed.includes(show(HOME))) changed.push(show(HOME));
+    if (!check) fs.writeFileSync(HOME, after);
+    console.log(`Version: v${version}`);
+  }
+}
+
 for (const e of errors) console.log("! " + e);
 if (check) {
-  console.log(changed.length ? `Veraltete Hashes in: ${changed.join(", ")} - npm run stamp` : "Alle Hashes aktuell");
+  console.log(changed.length ? `Veraltete Hashes/Version in: ${changed.join(", ")} - npm run stamp` : "Alle Hashes und die Version aktuell");
   process.exitCode = changed.length || errors.length ? 1 : 0;
 } else {
   console.log(changed.length ? `Aktualisiert: ${changed.join(", ")}` : "Alle Hashes waren schon aktuell");
