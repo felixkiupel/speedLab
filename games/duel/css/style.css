@@ -1,0 +1,125 @@
+/* Duel - nur was es nur in Duel gibt: Automaten-Bildschirm, Start-Hinweis, Menü-Regeln,
+   Tipp-Steuerung. Alles andere aus shared/css/base.css und shared/css/game.css. */
+
+/* ---------- MENÜ ---------- */
+/* Prototyp-Hinweis unter dem Logo: dunkles Etikett + kurzer Satz */
+.proto-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 14px 6px 6px;
+  border: 2px dashed var(--border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.proto-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menu-best {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.menu-best b { color: var(--text); }
+.menu-best-stars { display: inline-flex; gap: 2px; font-size: 0.95rem; }
+
+.menu-rules {
+  width: 340px;
+  max-width: 100%;
+  margin: 0;
+  padding: 14px 16px;
+  list-style: none;
+  border: 2px solid var(--border-soft);
+  border-radius: 14px;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.menu-rules li + li { margin-top: 6px; }
+.menu-rules b { color: var(--text); }
+
+/* ---------- GAME ---------- */
+#screen-game {
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  touch-action: manipulation;
+}
+
+/* Bildschirm im dicken Automaten-Rahmen */
+#game-canvas {
+  display: block;
+  box-sizing: content-box;
+  background: #191512;
+  border: 6px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 0 0 0 2px var(--border-soft), 0 10px 0 rgba(43, 36, 32, 0.18);
+}
+
+.start-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  width: max-content;
+  max-width: calc(100% - 28px);
+  margin: 0 auto;
+  padding: 9px 16px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px var(--bg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.start-hint.hidden { opacity: 0; }
+
+@media (max-width: 480px) {
+  .start-hint { text-wrap: balance; }
+}
+
+/* ---------- ERGEBNIS ---------- */
+.heart { display: inline-flex; }
+.heart .icon { display: block; }
+.heart.on path { fill: var(--ink); }
+.heart.off path { fill: none; stroke: var(--border-soft); stroke-width: 2; }
+.result-hearts { display: inline-flex; gap: 2px; font-size: 1.1rem; vertical-align: middle; }
+#btn-back-menu { grid-column: 1 / -1; }
+
+/* ---------- TIPP-STEUERUNG (Handy) ---------- */
+/* Oben der große Schlag-Knopf, darunter links/rechts/unten (kleiner) zum Ausweichen */
+.tap-btn { width: 30%; height: 30%; }
+.tap-btn[data-zone="N"] { width: 44%; height: 44%; left: 50%; top: 24%; }
+.tap-btn[data-zone="W"] { left: 16%; top: 62%; }
+.tap-btn[data-zone="E"] { left: 84%; top: 62%; }
+.tap-btn[data-zone="S"] { left: 50%; top: 84%; }
+
+.tap-btn svg {
+  position: absolute;
+  inset: 30%;
+  width: 40%;
+  height: 40%;
+  color: var(--bg);
+  fill: currentColor;
+  opacity: 0.85;
+}
+.tap-attack svg { inset: 27%; width: 46%; height: 46%; }

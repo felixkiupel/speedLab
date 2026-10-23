@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>speedLab Fish</title>
+<meta name="description" content="speedLab Fish – entspannt angeln, Fische verkaufen, bessere Ausrüstung kaufen.">
+<meta name="theme-color" content="#fbf7f0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../shared/css/base.css?v=dad0be95">
+<link rel="stylesheet" href="../../shared/css/game.css?v=50a3b4ca">
+<link rel="stylesheet" href="css/style.css?v=dd0874cd">
+</head>
+<body>
+<div id="app">
+
+  <!-- MENÜ -->
+  <section id="screen-menu" class="screen active">
+    <header class="topbar menu-topbar">
+      <a class="btn btn-ghost btn-back" href="../../">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Alle Spiele
+      </a>
+      <span></span>
+      <div class="taler-pill"><span class="taler-icon" aria-hidden="true"></span><span data-taler>0</span></div>
+    </header>
+    <div class="menu-card">
+      <div class="mascot face brand-mascot" aria-hidden="true"><span class="eye left"></span><span class="eye right"></span></div>
+      <div class="logo">
+        <h1 class="logo-word" aria-label="speedLab"><span class="logo-speed">speed</span><span class="logo-lab">Lab</span></h1>
+        <div class="logo-tag">Fish</div>
+      </div>
+      <p class="proto-note"><span class="proto-badge">Prototyp</span>Angeln, verkaufen, tiefer kommen – noch im Test.</p>
+      <p class="tagline">Lass den Haken runter. Hol ihn hoch. Rüste auf für die Tiefe.</p>
+      <div class="menu-buttons">
+        <button id="btn-play" class="btn btn-primary">Angeln</button>
+        <div class="menu-row">
+          <button id="btn-market" class="btn">Markt</button>
+          <button id="btn-book" class="btn">Fischbuch</button>
+        </div>
+        <button id="btn-settings" class="btn btn-ghost">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="8" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Einstellungen
+        </button>
+      </div>
+      <p id="menu-stats" class="menu-stats"></p>
+    </div>
+  </section>
+
+  <!-- ANGELN -->
+  <section id="screen-game" class="screen">
+    <header class="topbar fish-topbar">
+      <button class="btn btn-ghost btn-back" data-nav="screen-menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Menü
+      </button>
+      <button id="btn-hud-spot" class="spot-btn" type="button"><span id="hud-spot">Teich</span>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="btn-hud-box" class="box-pill" type="button" aria-label="Kühlbox – zum Markt">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 12c2.6-4.4 8.4-6.2 13.2-3.4L21 5.2v13.6l-6.3-3.4C9.9 18.2 4.1 16.4 1.5 12zM6.6 10.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/></svg>
+        <span id="hud-box">0/5</span>
+      </button>
+    </header>
+    <div class="canvas-wrap">
+      <div class="canvas-frame">
+        <canvas id="game-canvas"></canvas>
+      </div>
+    </div>
+    <p id="fish-hint" class="fish-hint"></p>
+    <!-- Der eine große Knopf: anschlagen (tippen) und ziehen (halten). Die Tiefe wählt man durch
+         Tippen aufs Wasser. -->
+    <button id="btn-action" class="action-btn" type="button" data-state="lower">
+      <span class="action-label">Warten …</span>
+    </button>
+
+    <!-- FANG-KARTE -->
+    <div id="catch-overlay" class="overlay catch-overlay hidden">
+      <div class="overlay-card catch-card">
+        <div id="catch-art" class="catch-art"></div>
+        <h2 id="catch-title">Fisch</h2>
+        <div id="catch-sub" class="catch-sub"></div>
+        <div id="catch-badges" class="catch-badges"></div>
+        <div id="catch-rows" class="result-rows"></div>
+        <p id="catch-note" class="results-note"></p>
+        <button id="btn-catch-ok" class="btn btn-primary">Ab in die Kühlbox</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARKT -->
+  <section id="screen-market" class="screen">
+    <header class="topbar">
+      <button id="btn-market-back" class="btn btn-ghost btn-back">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Zurück
+      </button>
+      <h2>Markt</h2>
+      <div class="taler-pill"><span class="taler-icon" aria-hidden="true"></span><span data-taler>0</span></div>
+    </header>
+    <div id="market-body" class="market-body"></div>
+  </section>
+
+  <!-- FISCHBUCH -->
+  <section id="screen-book" class="screen">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-back" data-nav="screen-menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Menü
+      </button>
+      <h2>Fischbuch</h2>
+      <span id="book-count" class="book-count">0/15</span>
+    </header>
+    <div id="book-body" class="market-body"></div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <div id="settings-overlay" class="overlay settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="overlay-card settings-card">
+      <h2 id="settings-title">Einstellungen</h2>
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-text"><b>Töne</b><span>Wasser, Rolle, Fang</span></div>
+          <button class="toggle" data-setting="sound" role="switch" aria-label="Töne"><span></span></button>
+        </div>
+        <div class="setting-row setting-volume-row">
+          <div class="setting-text"><b>Lautstärke</b><span id="setting-volume-value">70 %</span></div>
+          <input id="setting-volume" class="slider" type="range" min="0" max="100" step="5" aria-label="Lautstärke">
+        </div>
+        <div class="setting-row">
+          <div class="setting-text"><b>Vibration</b><span>Beim Biss und beim Fang</span></div>
+          <button class="toggle" data-setting="vibration" role="switch" aria-label="Vibration"><span></span></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-text"><b>Effekte</b><span>Spritzer, Wackeln</span></div>
+          <button class="toggle" data-setting="effects" role="switch" aria-label="Effekte"><span></span></button>
+        </div>
+      </div>
+      <button id="btn-settings-close" class="btn btn-primary">Fertig</button>
+      <button id="btn-reset-save" class="btn btn-ghost btn-danger" data-confirm="Taler, Fänge & Ausrüstung wirklich löschen?">Fish-Fortschritt löschen</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+</div>
+
+<!-- Prototyp: nur Töne, Effekte, Einstellungen und die Figur aus shared/ - kein Profil, keine Coins -->
+<script src="../../shared/js/no-zoom.js?v=52f11a77"></script>
+<script src="../../shared/js/links.js?v=86a0b5d1"></script>
+<script src="../../shared/js/cosmetics-draw.js?v=57457b93"></script>
+<script src="../../shared/js/audio.js?v=9819aa53"></script>
+<script src="../../shared/js/effects.js?v=2e81e6a0"></script>
+<script src="../../shared/js/settings.js?v=09c2f13e"></script>
+<script src="js/data.js?v=dd239e74"></script>
+<script src="js/storage.js?v=045e9c3a"></script>
+<script src="js/market.js?v=263521c0"></script>
+<script src="js/fishart.js?v=cd2ec7e2"></script>
+<script src="js/sounds.js?v=eb0516a5"></script>
+<script src="js/fishing.js?v=e161bb7e"></script>
+<script src="js/renderer.js?v=1e6ea4ee"></script>
+<script src="js/ui.js?v=8c61d360"></script>
+<script src="js/main.js?v=b3fd81c1"></script>
+</body>
+</html>

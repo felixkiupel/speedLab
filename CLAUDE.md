@@ -184,3 +184,65 @@ Alle Spiele: 30 Level in 3 Kapiteln, Freischalten mit Coins.
 - Tool: `npm run leap-check` – simuliert alle Level, kommende Dailys und 8 Endlos-Läufe à 12
   Checkpoints (perfekt spielbar, kein Abkürzen, Gabelungen erreichbar). Nach Änderungen an
   Generator/Kurve immer laufen lassen (~30 s).
+
+## Duel (`games/duel/`) – Arcade-Boss-Kampf, PROTOTYP (23.10.2026)
+
+**Wunsch des Nutzers:** Prototyp muss sich durch Löschen von `games/duel/` + dem Eintrag in
+`shared/js/games.js` (+ diesem Abschnitt) restlos entfernen lassen – also nichts außerhalb des
+Ordners anfassen. Darum: keine Coins, kein Profil, kein Freischalten, kein Shop-Link, Tool nicht in
+package.json (`node games/duel/tools/duel-check.js`). **Nur ein einziger Kampf** zum Testen – mehr
+Level/Bosse erst, wenn der Nutzer mit dem Kern zufrieden ist. Erste Version (9 ruhige Level, heller
+Look) fand er zu langweilig → schneller, Retro-Automaten-Stil.
+- Steuerung wie Maze: ← → ausweichen, ↓ ducken, ↑/Leertaste zuschlagen (Handy: großer Knopf oben).
+  Ausweichen ist kurz (`SL.DUEL.DODGE`), beim Zuschlagen kann man nicht ausweichen.
+- `boss.js`: `SL.ATTACKS` (welche Stellen L/C/R/D ein Angriff trifft, `opens` = Faust steckt fest
+  → Boss kurz offen), `SL.BOSS` (Energie, Rundenuhr, `phases[0]` normal / `phases[1]` rasend ab
+  halber Energie, je mit festen Kombos).
+- `game.js`: `SL.DuelSession` – eigene Spielzeit über `update(dt)`, Trefferstopp (`hitstop`) hält
+  sie kurz an, `step` = zuletzt vorgerückt (Renderer). Phasen
+  `wait/intro/guard/windup/strike/recover/open/counter/roar/down/taunt`. Zuschlagen trifft nur, wenn
+  offen (`isBossOpen`), sonst Block + Konter = Leben weg. Schläge im Takt: Gerade, Gerade, Haken
+  (`PUNCHES`, `chain`). Augenblitzen (`onGlint`, `GLINT_LEAD` vor dem Einschlag); Ausweichen
+  ≤ `PERFECT_MS` vor dem Einschlag = perfekt → Kombo bricht ab, Boss offen. Rundenuhr abgelaufen =
+  verloren. Sterne = übrige Leben.
+- `renderer.js`: Automaten-Look – dunkler Bildschirm, helle Figuren, eigene 5×7-Pixel-Schrift
+  (`FONT`, `pixelText`; kein Ü – sieht wie Ö aus), Leisten mit Nachlauf, Rundenuhr, Combo-Zähler,
+  Ansagen (`announce`), Einblendungen, Funken, invertierender Blitz (`flash`, Effekt-Einstellung),
+  Zoom-Stoß, Nachbilder, Publikum, Scanlines + Vignette (pro Größe vorgerendert). Welt 400×400.
+- `ui.js`: Menü → direkt in den Kampf, Zeitlupe bei perfekt/K.o. (`slowMo`), Ergebnis.
+- Tool `node games/duel/tools/duel-check.js`: Profi- und Mensch-Bot (260 ms Reaktion) müssen immer
+  gewinnen, Dauer-Zuschlagen muss verlieren; zeigt Kampfdauer gegen die Rundenuhr.
+
+## Fish (`games/fish/`) – Angel-Spiel, PROTOTYP (23.10.2026)
+
+Gleiche Prototyp-Regel wie Duel: alles in `games/fish/` + Eintrag in `shared/js/games.js` (+ dieser
+Abschnitt), Tool nur per `node games/fish/tools/fish-check.js`. Entspanntes „für unterwegs“-Spiel:
+Haken auf eine Tiefen-Ebene lassen, Fisch drillen, auf dem Markt verkaufen, aufrüsten.
+**Eigene Währung „Taler“** (nur im Spielstand `speedlab_fish_v1`, Icon = Münze mit Loch) – wegen
+der Coin-Regel keine Plattform-Coins; ob/wie man das verbindet, ist offen.
+- **Wünsche des Nutzers (Verlauf):** Stardew-Balken „viel zu schwer“ → Pfeil-Folgen → jetzt nach
+  seinem Referenzbild: **Querschnitt mit Tiefen-Ebenen**, Fische sichtbar in ihren Ebenen, tiefere
+  Angelplätze, Upgrades als Deckel. Minispiel = **Ziehen mit Spannung** (zu doll = reißt, zu wenig
+  = entkommt). Look schwarz-weiß/warm-beige, ruhig. Brise nur noch als stärker wiegendes Seegras +
+  leises Rauschen – **keine Windstriche** am Himmel (fand der Nutzer störend). Markt-Knöpfe rechts
+  alle gleich breit. Kein Kram (Stiefel/Dose) mehr.
+- `data.js`: `SL.SPOTS` (Teich 3×2 m, Fluss 4×3 m, Meer 5×6 m), `SL.FISH` (15 Arten: `layers` von–bis,
+  Seltenheit 1–4, Wert, kg, `strength`, `behavior` = Aufbäumen, `len` im Bild, `shape`),
+  `SL.GEAR` (Angel = `power` → schneller hoch, Schnur = `strength` → hält mehr, Rolle = `depth` in m
+  → erreichbare Ebenen, Köder, Kühlbox), `SL.gearStats`, `SL.reachableLayers(spot, depth)`.
+- `fishing.js`: `SL.FishingSession` – Fische schwimmen je Ebene (x 0..1, Tiefe in Ebenen), einer
+  kommt zum Haken, zupft, beißt; `setLayer` (false = zu tief), `press/release`; Zustände
+  `lower/wait/bite/reel/landed/escaped`. `SL.TensionGame`: Spannung läuft auf einen Zielwert zu
+  (halten = je nach Last = Fischkraft/Schnur, loslassen = fast locker), Aufbäumen mit Vorwarnung
+  (`tell`) – dagegen ziehen = Riss; zu starker Fisch zieht die Schnur beim Aufbäumen auch ohne
+  Halten straff (`SAFE_LOAD`); locker = Fortschritt sinkt; nach `FIGHT_MS` löst sich der Haken.
+  Nie in der roten Zone = +20 %.
+- `fishart.js`: `SL.FishArt` – Fisch-Pfade aus `shape`, als SVG (Markt, Fischbuch, Karte) und Canvas.
+- `renderer.js`: Welt 400×560 – Himmel mit Steg/Figur/Rute, Wasser-Ebenen mit Meter-Marken,
+  gesperrte Ebenen schraffiert, Grund mit Seegras, Fische, Haken + Luftblasen, Spannungs-Anzeige.
+  Brise (`GUST_*`) ruft `onGust` → Wind-Ton in ui.js.
+- `market.js`: `SL.Market` (Fang verbuchen + Fischbuch, verkaufen, Ausrüstung/Plätze kaufen).
+- `ui.js`: aufs Wasser tippen bzw. ↑/↓ = Tiefe (je Platz gemerkt in `state.layers`), großer Knopf
+  bzw. Leertaste = anschlagen + ziehen; Töne beim Ziehen (Rolle, Knarzen, Warnton).
+- Tool: erreichbare Ebenen je Rolle + Fangquote je Fisch × Ausrüstungsstufe für zwei Bots
+  (200/320 ms Reaktion). Nach Änderungen an Fischen, Ausrüstung oder Spannungs-Werten laufen lassen.

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>speedLab Duel</title>
+<meta name="description" content="speedLab Duel – weich den Angriffen aus, lies die Kombos und schlag zurück.">
+<meta name="theme-color" content="#fbf7f0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='56' fill='%232b2420'/%3E%3Ccircle cx='43' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='77' cy='52' r='14.6' fill='%23fbf7f0'/%3E%3Ccircle cx='43' cy='52' r='6.7' fill='%232b2420'/%3E%3Ccircle cx='77' cy='52' r='6.7' fill='%232b2420'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../shared/css/base.css?v=dad0be95">
+<link rel="stylesheet" href="../../shared/css/game.css?v=50a3b4ca">
+<link rel="stylesheet" href="css/style.css?v=0a62b66a">
+</head>
+<body>
+<div id="app">
+
+  <!-- MAIN MENU -->
+  <section id="screen-menu" class="screen active">
+    <header class="topbar menu-topbar">
+      <a class="btn btn-ghost btn-back" href="../../">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Alle Spiele
+      </a>
+      <span></span>
+      <span></span>
+    </header>
+    <div class="menu-card">
+      <div class="mascot face brand-mascot" aria-hidden="true"><span class="eye left"></span><span class="eye right"></span></div>
+      <div class="logo">
+        <h1 class="logo-word" aria-label="speedLab"><span class="logo-speed">speed</span><span class="logo-lab">Lab</span></h1>
+        <div class="logo-tag">Duel</div>
+      </div>
+      <p class="proto-note"><span class="proto-badge">Prototyp</span>Ein einzelner Testkampf – noch kein fertiges Spiel.</p>
+      <p class="tagline">Weich aus. Lies die Kombo. Schlag zurück.</p>
+      <div class="menu-buttons">
+        <button id="btn-play" class="btn btn-primary">Kämpfen</button>
+        <button id="btn-settings" class="btn btn-ghost">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="8" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Einstellungen
+        </button>
+      </div>
+      <p id="menu-best" class="menu-best"></p>
+      <ul class="menu-rules">
+        <li><b>Zone füllt sich</b> = da schlägt er hin. Weich in eine freie Bahn aus.</li>
+        <li><b>Auge blitzt</b> = jetzt! Ganz knapp ausweichen ist <b>perfekt</b> und öffnet ihn.</li>
+        <li><b>Hohl + Sternchen</b> = offen. Schnell drücken: Gerade, Gerade, Haken.</li>
+        <li>Zuschlagen, wenn er nicht offen ist: <b>Block + Konter</b>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="hud-left"></div>
+      <div class="hud-center"></div>
+      <div class="hud-right">
+        <button id="btn-pause" class="btn btn-icon" aria-label="Pause">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2"/><rect x="13.5" y="5.5" width="4" height="13" rx="1.2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <div class="canvas-frame">
+        <canvas id="game-canvas"></canvas>
+        <div id="start-hint" class="start-hint"></div>
+      </div>
+    </div>
+
+    <!-- Tipp-Steuerung (Handy): oben der große Schlag-Knopf, darunter links/rechts/unten zum
+         Ausweichen. Wie in Maze zählt jeder Tipp für den Knopf in dieser Richtung. -->
+    <div class="tap-pad" aria-hidden="true">
+      <div class="tap-field">
+        <span class="tap-btn tap-attack" data-zone="N">
+          <svg viewBox="0 0 24 24"><path d="M12 2.5l2.2 5.6 5.9-1.7-3.4 5.1 4.8 3.8-6.1.4.3 6.1L12 17.6l-3.7 4.2.3-6.1-6.1-.4 4.8-3.8-3.4-5.1 5.9 1.7z"/></svg>
+        </span>
+        <span class="tap-btn" data-zone="W"><svg viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="tap-btn" data-zone="E"><svg viewBox="0 0 24 24"><path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="tap-btn" data-zone="S"><svg viewBox="0 0 24 24"><path d="M5.5 9.5L12 16l6.5-6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <div class="mascot small face"><span class="eye left"></span><span class="eye right"></span></div>
+        <h2>Pause</h2>
+        <button id="btn-resume" class="btn btn-primary">Weiter</button>
+        <button id="btn-restart" class="btn">Neustart</button>
+        <button id="btn-pause-settings" class="btn">Einstellungen</button>
+        <button id="btn-quit" class="btn btn-ghost" data-nav="screen-menu">Aufgeben</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="overlay-card results-card">
+      <div class="mascot small face"><span class="eye left"></span><span class="eye right"></span></div>
+      <h2 id="results-title">K.o.-Sieg!</h2>
+      <div class="result-stars" id="results-stars"></div>
+      <span id="results-badge" class="results-badge hidden">Neue Bestzeit</span>
+      <div class="result-rows">
+        <div class="result-row"><span>Zeit</span><span id="results-time" class="result-value">0.0s</span></div>
+        <div class="result-row"><span>Leben übrig</span><span id="results-hearts" class="result-value"></span></div>
+        <div class="result-row"><span>Bester Combo</span><span id="results-combo" class="result-value">0</span></div>
+        <div class="result-row"><span>Perfekt ausgewichen</span><span id="results-perfects" class="result-value">0</span></div>
+        <div class="result-row"><span>Geblockt</span><span id="results-blocked" class="result-value">0</span></div>
+      </div>
+      <p id="results-note" class="results-note"></p>
+      <div class="results-buttons">
+        <button id="btn-retry" class="btn btn-primary">Nochmal</button>
+        <button id="btn-back-menu" class="btn btn-ghost" data-nav="screen-menu">Menü</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <div id="settings-overlay" class="overlay settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="overlay-card settings-card">
+      <h2 id="settings-title">Einstellungen</h2>
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-text"><b>Töne</b><span>Ausholen, Treffer, Ansagen</span></div>
+          <button class="toggle" data-setting="sound" role="switch" aria-label="Töne"><span></span></button>
+        </div>
+        <div class="setting-row setting-volume-row">
+          <div class="setting-text"><b>Lautstärke</b><span id="setting-volume-value">70 %</span></div>
+          <input id="setting-volume" class="slider" type="range" min="0" max="100" step="5" aria-label="Lautstärke">
+        </div>
+        <div class="setting-row">
+          <div class="setting-text"><b>Vibration</b><span>Bei Treffern</span></div>
+          <button class="toggle" data-setting="vibration" role="switch" aria-label="Vibration"><span></span></button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-text"><b>Effekte</b><span>Wackeln, Blitze, Zoom, Partikel</span></div>
+          <button class="toggle" data-setting="effects" role="switch" aria-label="Effekte"><span></span></button>
+        </div>
+        <div class="setting-row setting-row-stack">
+          <div class="setting-text"><b>Tipp-Steuerung</b><span>Schlag-Knopf + drei Ausweich-Knöpfe</span></div>
+          <div class="segmented" data-setting="touchControls">
+            <button type="button" data-value="auto">Auto</button>
+            <button type="button" data-value="on">An</button>
+            <button type="button" data-value="off">Aus</button>
+          </div>
+        </div>
+      </div>
+      <button id="btn-settings-close" class="btn btn-primary">Fertig</button>
+      <button id="btn-reset-save" class="btn btn-ghost btn-danger" data-confirm="Bestzeit & Rekorde wirklich löschen?">Duel-Fortschritt löschen</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Prototyp: nur Töne, Effekte, Einstellungen und die Figur aus shared/ - kein Profil, keine Coins -->
+<script src="../../shared/js/no-zoom.js?v=52f11a77"></script>
+<script src="../../shared/js/links.js?v=86a0b5d1"></script>
+<script src="../../shared/js/cosmetics-draw.js?v=57457b93"></script>
+<script src="../../shared/js/audio.js?v=9819aa53"></script>
+<script src="../../shared/js/effects.js?v=2e81e6a0"></script>
+<script src="../../shared/js/settings.js?v=09c2f13e"></script>
+<script src="js/boss.js?v=9a2d3539"></script>
+<script src="js/storage.js?v=7d9bbb67"></script>
+<script src="js/sounds.js?v=f3d1f6cd"></script>
+<script src="js/game.js?v=8353d059"></script>
+<script src="js/renderer.js?v=27489ab4"></script>
+<script src="js/ui.js?v=8ab894cf"></script>
+<script src="js/main.js?v=b3fd81c1"></script>
+</body>
+</html>
